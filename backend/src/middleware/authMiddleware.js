@@ -12,18 +12,6 @@ export const protect = asyncHandler(async (req, _res, next) => {
   }
 
   const decoded = verifyAccessToken(token);
-
-  if (decoded.demo) {
-    req.user = {
-      _id: decoded.sub,
-      fullName: decoded.fullName,
-      email: decoded.email,
-      role: decoded.role,
-      isActive: true,
-    };
-    return next();
-  }
-
   const user = await User.findById(decoded.sub).select("_id fullName email role isActive");
 
   if (!user || !user.isActive) {

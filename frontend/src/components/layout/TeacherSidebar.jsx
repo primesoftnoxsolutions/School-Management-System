@@ -1,26 +1,10 @@
 import { useState } from "react";
-import { IconLogout, navIconMap } from "../icons/NavIcons";
+import { IconLogout, teacherNavIconMap } from "../icons/NavIcons";
 import LogoutConfirmModal from "./LogoutConfirmModal";
 
-export default function Sidebar({ selected, onSelect, onLogout, role }) {
+export default function TeacherSidebar({ selected, onSelect, onLogout }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
-  const adminNavItems = [
-    "Dashboard",
-    "Teachers",
-    "Admissions",
-    "Fee Management",
-    "Fee Refund",
-    "Fine Management",
-    "Students Portfolios",
-    "School Leaving",
-    "Time & Attendance",
-    "Payroll",
-    "Reports",
-  ];
-
-  const navItems =
-    role === "ACCOUNTANT" ? adminNavItems.filter((item) => item !== "Teachers") : adminNavItems;
+  const navItems = ["My Panel", "Mark Attendance", "My Classes", "Academic Records", "Reports"];
 
   return (
     <>
@@ -32,13 +16,13 @@ export default function Sidebar({ selected, onSelect, onLogout, role }) {
           <h2 className="mt-1 text-lg font-bold leading-tight text-slate-800">
             Public <span className="text-blue-600">School</span>
           </h2>
-          <p className="mt-1 text-[11px] text-slate-500">School Management System</p>
+          <p className="mt-1 text-[11px] text-slate-500">Teacher Portal</p>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {navItems.map((item) => {
             const active = selected === item;
-            const Icon = navIconMap[item];
+            const Icon = teacherNavIconMap[item];
             return (
               <button
                 key={item}

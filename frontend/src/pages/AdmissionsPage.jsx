@@ -1,39 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../services/api/client";
 
-const fallbackAdmissions = [
-  {
-    _id: "f1",
-    admissionNo: "ADM-2026-0001",
-    firstName: "Ali",
-    lastName: "Raza",
-    className: "Grade 8",
-    section: "A",
-    guardianName: "Raza Ahmed",
-    admissionDate: "2026-06-01T00:00:00.000Z",
-  },
-  {
-    _id: "f2",
-    admissionNo: "ADM-2026-0002",
-    firstName: "Ayesha",
-    lastName: "Noor",
-    className: "Grade 6",
-    section: "B",
-    guardianName: "Sajid Noor",
-    admissionDate: "2026-06-03T00:00:00.000Z",
-  },
-  {
-    _id: "f3",
-    admissionNo: "ADM-2026-0003",
-    firstName: "Hamza",
-    lastName: "Khan",
-    className: "Grade 10",
-    section: "C",
-    guardianName: "Khalid Khan",
-    admissionDate: "2026-06-05T00:00:00.000Z",
-  },
-];
-
 const initialForm = {
   firstName: "",
   lastName: "",
@@ -62,18 +29,17 @@ export default function AdmissionsPage({ role }) {
       const { data } = await api.get("/admissions", {
         params: { page: nextPage, limit: pagination.limit, search: nextSearch },
       });
-      const fetchedItems = data.data.items || [];
-      setItems(fetchedItems.length ? fetchedItems : fallbackAdmissions);
+      setItems(data.data.items || []);
       setPagination({
-        total: data.data.total || fallbackAdmissions.length,
+        total: data.data.total || 0,
         totalPages: data.data.totalPages || 1,
         limit: data.data.limit,
       });
       setPage(data.data.page);
     } catch (err) {
-      setItems(fallbackAdmissions);
-      setPagination({ total: fallbackAdmissions.length, totalPages: 1, limit: 10 });
-      setError("");
+      setItems([]);
+      setPagination({ total: 0, totalPages: 1, limit: 10 });
+      setError(err.response?.data?.message || "Failed to load admissions");
     } finally {
       setLoading(false);
     }

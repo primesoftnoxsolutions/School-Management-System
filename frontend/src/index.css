@@ -4,16 +4,78 @@
 
 @layer base {
   body {
-    @apply bg-sky-50 text-slate-800;
-    background-image:
-      radial-gradient(circle at 10% 10%, rgba(186, 230, 253, 0.55), transparent 30%),
-      radial-gradient(circle at 90% 15%, rgba(224, 242, 254, 0.7), transparent 35%),
-      linear-gradient(135deg, #f8fdff 0%, #eef8ff 45%, #f5fbff 100%);
+    @apply bg-slate-100 text-slate-800;
     min-height: 100vh;
   }
 }
 
 @layer components {
+  .ref-app {
+    @apply bg-slate-100;
+  }
+
+  .ref-main {
+    @apply bg-slate-100;
+  }
+
+  .ref-sidebar {
+    @apply border-r border-slate-200 bg-white;
+    box-shadow: 0 0 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .ref-nav-item {
+    @apply flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50;
+  }
+
+  .ref-nav-item-active {
+    @apply border-l-4 border-blue-600 bg-blue-50 pl-2 text-blue-700;
+  }
+
+  .ref-nav-icon {
+    @apply flex h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-xs font-semibold text-slate-600;
+  }
+
+  .ref-nav-item-active .ref-nav-icon {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .ref-header {
+    @apply border-b border-slate-200 bg-white px-6 py-4 lg:px-8;
+  }
+
+  .ref-search {
+    @apply rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100;
+  }
+
+  .ref-icon-btn {
+    @apply flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50;
+  }
+
+  .ref-card {
+    @apply rounded-2xl border border-slate-200 bg-white;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .ref-select {
+    @apply rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-slate-600 outline-none;
+  }
+
+  .ref-btn-outline {
+    @apply rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50;
+  }
+
+  .ref-input {
+    @apply rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100;
+  }
+
+  .ref-btn-primary {
+    @apply rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-60;
+  }
+
+  .ref-btn-danger {
+    @apply rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100;
+  }
+
   .premium-glass {
     @apply border border-sky-100/80 bg-white/70 backdrop-blur-xl;
     box-shadow: 0 10px 30px rgba(14, 116, 144, 0.08);

@@ -4,20 +4,8 @@ import { env } from "./config/env.js";
 import { seedSuperAdmin } from "./seed/seedSuperAdmin.js";
 
 const start = async () => {
-  let dbConnected = false;
-  try {
-    await connectDB();
-    dbConnected = true;
-  } catch (error) {
-    if (env.nodeEnv === "production") {
-      throw error;
-    }
-    console.warn("MongoDB unavailable. Running in demo mode without database.");
-  }
-
-  if (dbConnected) {
-    await seedSuperAdmin();
-  }
+  await connectDB();
+  await seedSuperAdmin();
 
   app.listen(env.port, () => {
     console.log(`Server running on port ${env.port}`);

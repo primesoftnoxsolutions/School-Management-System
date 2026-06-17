@@ -5,7 +5,7 @@ import { login } from "../store/authSlice";
 export default function LoginPage() {
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
-  const [form, setForm] = useState({ email: "admin@schoolerp.local", password: "Admin@123" });
+  const [form, setForm] = useState({ email: "naseer@idealschool.com", password: "Naseer@59317" });
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -55,7 +55,7 @@ export default function LoginPage() {
           {loading ? "Signing in..." : "Sign in"}
         </button>
         <div className="mt-4 rounded-xl border border-sky-100 bg-white/60 p-3 text-xs text-sky-900/70">
-          <p>Super Admin: admin@schoolerp.local / Admin@123</p>
+          <p>Super Admin: naseer@idealschool.com / Naseer@59317</p>
           <p>Accountant: accountant@schoolerp.local / Account@123</p>
           <p>Teacher: teacher@schoolerp.local / Teacher@123</p>
         </div>

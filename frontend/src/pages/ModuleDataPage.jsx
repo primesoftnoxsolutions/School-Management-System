@@ -1,32 +1,11 @@
-import { moduleTableData } from "../data/mockData";
-
 export default function ModuleDataPage({ title }) {
-  const moduleData = moduleTableData[title];
-
-  if (!moduleData) {
-    return (
-      <div className="premium-card">
-        <p className="text-sm text-slate-600">Module configuration not found.</p>
-      </div>
-    );
-  }
-
   return (
     <section className="space-y-4">
       <div>
         <h2 className="premium-title text-xl font-semibold">{title}</h2>
         <p className="text-sm text-sky-800/70">
-          Live-ready screen structure with populated sample data for UX and workflow testing.
+          No dummy data is shown. Records will appear after module APIs and database entries are added.
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {moduleData.stats.map((card) => (
-          <article key={card.label} className="premium-card">
-            <p className="text-xs uppercase tracking-wide text-sky-800/65">{card.label}</p>
-            <h3 className="premium-title mt-2 text-xl font-semibold">{card.value}</h3>
-          </article>
-        ))}
       </div>
 
       <div className="premium-card">
@@ -47,23 +26,19 @@ export default function ModuleDataPage({ title }) {
           <table className="min-w-full text-sm">
             <thead className="bg-sky-100/60 text-left text-sky-900">
               <tr>
-                {moduleData.headers.map((header) => (
-                  <th key={header} className="px-4 py-3 font-medium">
-                    {header}
-                  </th>
-                ))}
+                <th className="px-4 py-3 font-medium">Module</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Notes</th>
               </tr>
             </thead>
             <tbody>
-              {moduleData.rows.map((row, index) => (
-                <tr key={`${row[0]}-${index}`} className="border-t border-sky-100/80">
-                  {row.map((cell, cellIndex) => (
-                    <td key={`${cell}-${cellIndex}`} className="px-4 py-3 text-slate-700">
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              <tr className="border-t border-sky-100/80">
+                <td className="px-4 py-3 text-slate-700">{title}</td>
+                <td className="px-4 py-3 text-slate-700">No records</td>
+                <td className="px-4 py-3 text-slate-700">
+                  Create records from this module to see live database data.
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

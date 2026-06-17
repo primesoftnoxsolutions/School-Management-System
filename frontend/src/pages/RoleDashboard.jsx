@@ -1,188 +1,306 @@
-import { superAdminKpis, teacherKpis, trendSeries } from "../data/mockData";
+import { useEffect, useState } from "react";
+import api from "../services/api/client";
+import StatCard from "../components/dashboard/StatCard";
+import { StatsColumnBoard } from "../components/dashboard/StatsColumnBoard";
+import {
+  IconAbsent,
+  IconAttendance,
+  IconClasses,
+  IconClock,
+  IconFee,
+  IconLeave,
+  IconPresent,
+  IconStudents,
+  IconTasks,
+  IconTeachers,
+} from "../components/icons/DashboardIcons";
 
-function SectionHeading({ title, subtitle }) {
-  return (
-    <div className="mb-3 flex items-center justify-between">
-      <div>
-        <h3 className="premium-title text-xl font-semibold">{title}</h3>
-        {subtitle ? <p className="text-xs text-sky-800/70">{subtitle}</p> : null}
+function AttendanceChart({ percentage, trend = [] }) {
+  const points = trend.length
+    ? trend.map((item) => Number(item.value || 0))
+    : percentage
+      ? Array(10).fill(Number(percentage))
+      : [];
+
+  if (!points.length) {
+    return (
+      <div className="ref-card p-5">
+        <h3 className="text-base font-semibold text-slate-800">Student Attendance</h3>
+        <p className="mt-8 text-center text-sm text-slate-500">No attendance records available yet.</p>
       </div>
-      <span className="rounded-full border border-sky-200 bg-white/70 px-3 py-1 text-[11px] font-medium text-sky-700">
-        Live
-      </span>
+    );
+  }
+
+  const width = 560;
+  const height = 180;
+  const padding = 24;
+  const max = 100;
+  const min = 0;
+  const step = (width - padding * 2) / (points.length - 1);
+
+  const coords = points.map((value, index) => {
+    const x = padding + index * step;
+    const y = height - padding - ((value - min) / (max - min)) * (height - padding * 2);
+    return `${x},${y}`;
+  });
+
+  const area = `${padding},${height - padding} ${coords.join(" ")} ${width - padding},${height - padding}`;
+  const line = coords.join(" ");
+
+  return (
+    <div className="ref-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-slate-800">Student Attendance</h3>
+        <select className="ref-select text-sm">
+          <option>This Month</option>
+        </select>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-48 w-full">
+        <defs>
+          <linearGradient id="attendanceFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {[0, 25, 50, 75, 100].map((tick) => {
+          const y = height - padding - ((tick - min) / (max - min)) * (height - padding * 2);
+          return (
+            <g key={tick}>
+              <line x1={padding} y1={y} x2={width - padding} y2={y} stroke="#e2e8f0" strokeWidth="1" />
+              <text x="8" y={y + 4} fontSize="10" fill="#94a3b8">
+                {tick}%
+              </text>
+            </g>
+          );
+        })}
+        <polygon points={area} fill="url(#attendanceFill)" />
+        <polyline points={line} fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
+        {coords.map((point, index) => {
+          const [x, y] = point.split(",");
+          return <circle key={point} cx={x} cy={y} r="4" fill="#3b82f6" />;
+        })}
+      </svg>
     </div>
   );
 }
 
-function SimpleTrendChart({ title, unit, keyName, colorClass }) {
-  const maxValue = Math.max(...trendSeries.map((item) => item[keyName]));
-  const latestValue = trendSeries[trendSeries.length - 1][keyName];
+function FeeDonut({ collected, pending, overdue }) {
+  const total = collected + pending + overdue || 1;
+  const segments = [
+    { label: "Collected", value: collected, color: "#3b82f6" },
+    { label: "Pending", value: pending, color: "#f59e0b" },
+    { label: "Overdue", value: overdue, color: "#ef4444" },
+  ];
+
+  let offset = 0;
+  const radius = 54;
+  const circumference = 2 * Math.PI * radius;
 
   return (
-    <article className="premium-card relative overflow-hidden">
-      <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-sky-200/50 blur-2xl" />
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-          <p className="text-xs text-sky-800/60">Last 6 months</p>
-        </div>
-        <div className="rounded-xl border border-sky-200 bg-white/80 px-3 py-1.5 text-right">
-          <p className="text-[10px] uppercase tracking-wide text-sky-700/80">Latest</p>
-          <p className="text-sm font-semibold text-slate-800">
-            {latestValue}
-            {unit}
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {trendSeries.map((item) => {
-          const width = Math.max((item[keyName] / maxValue) * 100, 10);
-          return (
-            <div key={`${title}-${item.month}`} className="grid grid-cols-[42px_1fr_62px] items-center gap-2">
-              <span className="text-xs font-medium text-sky-800/70">{item.month}</span>
-              <div className="relative h-2.5 rounded-full bg-sky-100/90">
-                <div className={`h-2.5 rounded-full ${colorClass}`} style={{ width: `${width}%` }} />
-                <span
-                  className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-white bg-sky-400 shadow-sm"
-                  style={{ left: `calc(${width}% - 8px)` }}
-                />
-              </div>
-              <span className="text-right text-xs font-medium text-slate-700">
-                {item[keyName]}
-                {unit}
+    <div className="ref-card p-5">
+      <h3 className="mb-4 text-base font-semibold text-slate-800">Fee Collections Status</h3>
+      <div className="flex items-center gap-6">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="16" />
+          {segments.map((segment) => {
+            const dash = (segment.value / total) * circumference;
+            const circle = (
+              <circle
+                key={segment.label}
+                cx="70"
+                cy="70"
+                r={radius}
+                fill="none"
+                stroke={segment.color}
+                strokeWidth="16"
+                strokeDasharray={`${dash} ${circumference - dash}`}
+                strokeDashoffset={-offset}
+                transform="rotate(-90 70 70)"
+              />
+            );
+            offset += dash;
+            return circle;
+          })}
+        </svg>
+        <div className="space-y-2 text-sm">
+          {segments.map((segment) => (
+            <div key={segment.label} className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
+              <span className="text-slate-600">
+                {segment.label}: Rs. {segment.value.toLocaleString()}
               </span>
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </article>
+    </div>
   );
 }
 
-export default function RoleDashboard({ role }) {
+export default function RoleDashboard({ role, onNavigate }) {
   const isSuperAdmin = role === "SUPER_ADMIN";
-  const kpis = isSuperAdmin ? superAdminKpis : teacherKpis;
-  const teacherStats = kpis.filter((item) => item.label.toLowerCase().includes("teacher"));
-  const studentStats = kpis.filter((item) => item.label.toLowerCase().includes("student"));
-  const otherStats = kpis.filter(
-    (item) =>
-      !item.label.toLowerCase().includes("teacher") &&
-      !item.label.toLowerCase().includes("student")
-  );
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const endpoint = isSuperAdmin ? "/dashboard/super-admin" : "/dashboard/teacher";
+        const response = await api.get(endpoint);
+        setData(response.data?.data || {});
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [isSuperAdmin]);
+
+  if (loading) return <p className="text-sm text-slate-500">Loading dashboard...</p>;
+  if (error) return <p className="text-sm text-rose-600">{error}</p>;
+
+  if (!isSuperAdmin) {
+    return (
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Teacher Dashboard</h2>
+          <p className="text-sm text-slate-500">Your classroom overview.</p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Assigned Classes" value={data.cards?.assignedClasses ?? 0} tone="blue" icon={IconClasses} />
+          <StatCard title="Today's Attendance" value={data.cards?.todaysAttendance ?? 0} tone="green" icon={IconClock} />
+          <StatCard title="Total Students" value={data.cards?.totalStudents ?? 0} tone="purple" icon={IconStudents} />
+          <StatCard title="Pending Tasks" value={data.cards?.pendingTasks ?? 0} tone="orange" icon={IconTasks} />
+        </div>
+      </section>
+    );
+  }
+
+  const cards = data.cards || {};
+  const feeStatus = data.feeStatus || { collected: 0, pending: 0, overdue: 0 };
+  const recentAdmissions = data.recentAdmissions || [];
+
+  const teacherStats = [
+    { label: "Total Teachers", value: cards.totalTeachers ?? 0, tone: "blue", icon: IconTeachers },
+    { label: "Present Teachers", value: cards.presentTeachers ?? 0, tone: "green", icon: IconPresent },
+    { label: "Absent Teachers", value: cards.absentTeachers ?? 0, tone: "rose", icon: IconAbsent },
+  ];
+
+  const studentStats = [
+    { label: "Total Students", value: cards.totalStudents ?? 0, tone: "purple", icon: IconStudents },
+    { label: "Present Students", value: cards.presentStudents ?? 0, tone: "green", icon: IconPresent },
+    { label: "Absent Students", value: cards.absentStudents ?? 0, tone: "rose", icon: IconAbsent },
+  ];
+
+  const otherStats = [
+    { label: "Pending Fees", value: `Rs. ${(cards.pendingFees ?? 0).toLocaleString()}`, tone: "orange", icon: IconFee },
+    { label: "Attendance %", value: `${cards.attendancePercentage ?? 0}%`, tone: "sky", icon: IconAttendance },
+    { label: "Total On Leave", value: cards.totalOnLeave ?? 0, tone: "amber", icon: IconLeave },
+  ];
 
   return (
-    <section className="space-y-5">
-      <div>
-        <h2 className="premium-title text-3xl font-semibold">
-          {isSuperAdmin ? "Super Admin Dashboard" : "Teacher Dashboard"}
-        </h2>
-        <p className="text-sm text-sky-800/70">
-          {isSuperAdmin
-            ? "System-wide KPIs, finance and operations overview."
-            : "Classroom operations, attendance and workload snapshot."}
-        </p>
+    <section className="space-y-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <StatsColumnBoard
+          title="Teacher Stats"
+          subtitle="Attendance and presence overview"
+          items={teacherStats}
+        />
+        <StatsColumnBoard
+          title="Student Stats"
+          subtitle="Enrollment and daily attendance snapshot"
+          items={studentStats}
+        />
+        <StatsColumnBoard
+          title="Other Stats"
+          subtitle="Fee, leave and operational indicators"
+          items={otherStats}
+        />
       </div>
 
-      {isSuperAdmin ? (
-        <>
-          <div>
-            <SectionHeading title="Teacher Stats" subtitle="Attendance and presence overview" />
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {teacherStats.map((item) => (
-                <article key={item.label} className="premium-card relative overflow-hidden py-3">
-                  <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-sky-200/50 blur-xl" />
-                  <p className="text-[11px] uppercase tracking-wide text-sky-800/65">{item.label}</p>
-                  <h3 className="premium-title mt-1 text-2xl font-semibold">{item.value}</h3>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <SectionHeading title="Student Stats" subtitle="Enrollment and daily attendance snapshot" />
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {studentStats.map((item) => (
-                <article key={item.label} className="premium-card relative overflow-hidden py-3">
-                  <div className="absolute -right-6 -top-6 h-16 w-16 rounded-full bg-cyan-200/50 blur-xl" />
-                  <p className="text-[11px] uppercase tracking-wide text-sky-800/65">{item.label}</p>
-                  <h3 className="premium-title mt-1 text-2xl font-semibold">{item.value}</h3>
-                </article>
-              ))}
-            </div>
-          </div>
-
-          {otherStats.length ? (
-            <div>
-              <SectionHeading title="Other Stats" subtitle="Fee, leave and operational indicators" />
-              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {otherStats.map((item) => (
-                  <article
-                    key={item.label}
-                    className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-white/90 to-sky-100/60 p-4 backdrop-blur-xl"
-                  >
-                    <p className="text-[11px] uppercase tracking-wide text-sky-900/70">{item.label}</p>
-                    <h3 className="premium-title mt-1 text-2xl font-semibold">{item.value}</h3>
-                    <p className="mt-1 text-xs text-sky-700/70">Operational status</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {kpis.map((item) => (
-            <article key={item.label} className="premium-card py-3">
-              <p className="text-[11px] uppercase tracking-wide text-sky-800/65">{item.label}</p>
-              <h3 className="premium-title mt-1 text-2xl font-semibold">{item.value}</h3>
-            </article>
-          ))}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <AttendanceChart
+            percentage={cards.attendancePercentage ?? 0}
+            trend={data.charts?.attendanceTrend || []}
+          />
         </div>
-      )}
-
-      {isSuperAdmin ? (
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <SimpleTrendChart title="Monthly Admissions" unit="" keyName="admissions" colorClass="bg-sky-500" />
-          <SimpleTrendChart title="Fee Collection Trend (M PKR)" unit="" keyName="fee" colorClass="bg-cyan-500" />
-          <SimpleTrendChart title="Attendance Trend (%)" unit="%" keyName="attendance" colorClass="bg-blue-500" />
-          <SimpleTrendChart title="Payroll Trend (M PKR)" unit="" keyName="payroll" colorClass="bg-sky-400" />
+        <div className="ref-card p-5">
+          <h3 className="mb-4 text-base font-semibold text-slate-800">Quick Actions</h3>
+          <div className="space-y-3">
+            {[
+              { label: "Add Student", tone: "text-emerald-600", target: "Admissions" },
+              { label: "Add Teacher", tone: "text-orange-600", target: "Teachers" },
+              { label: "Create Class", tone: "text-emerald-600", target: "Admissions" },
+              { label: "Generate Report", tone: "text-violet-600", target: "Reports" },
+            ].map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                onClick={() => onNavigate?.(action.target)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <span className={action.tone}>{action.label}</span>
+                <span className="text-slate-400">›</span>
+              </button>
+            ))}
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-          <div className="premium-card">
-            <h3 className="text-sm font-semibold text-slate-800">Teacher Actions</h3>
-            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-              {["Mark Attendance", "View Assigned Classes", "Update Academic Records", "Download Attendance Report"].map(
-                (action) => (
-                  <button
-                    key={action}
-                    type="button"
-                    className="premium-btn-soft text-left"
-                  >
-                    {action}
-                  </button>
-                )
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <FeeDonut
+          collected={feeStatus.collected}
+          pending={feeStatus.pending}
+          overdue={feeStatus.overdue}
+        />
+
+        <div className="ref-card overflow-hidden p-0">
+          <h3 className="border-b border-slate-100 px-5 py-4 text-base font-semibold text-slate-800">
+            Recent Admissions
+          </h3>
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-left text-slate-500">
+              <tr>
+                <th className="px-5 py-3 font-medium">Name</th>
+                <th className="px-5 py-3 font-medium">Class</th>
+                <th className="px-5 py-3 font-medium">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentAdmissions.length ? (
+                recentAdmissions.map((item) => (
+                  <tr key={item.id} className="border-t border-slate-100">
+                    <td className="px-5 py-3 text-slate-700">{item.name}</td>
+                    <td className="px-5 py-3 text-slate-700">{item.className}</td>
+                    <td className="px-5 py-3 text-slate-700">
+                      {item.date ? new Date(item.date).toLocaleDateString() : "-"}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="px-5 py-6 text-slate-500">
+                    No admissions found yet.
+                  </td>
+                </tr>
               )}
-            </div>
-          </div>
-          <div className="premium-card">
-            <h3 className="text-sm font-semibold text-slate-800">Today's Class Insights</h3>
-            <div className="mt-3 space-y-3">
-              {[
-                ["Grade 8-A", "Attendance 94%"],
-                ["Grade 7-B", "Homework pending: 11"],
-                ["Grade 9-C", "Tests to check: 28"],
-              ].map((item) => (
-                <div key={item[0]} className="rounded-xl border border-sky-100 bg-white/70 px-3 py-2">
-                  <p className="text-sm font-medium text-slate-800">{item[0]}</p>
-                  <p className="text-xs text-sky-800/70">{item[1]}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+            </tbody>
+          </table>
         </div>
-      )}
+
+        <div className="ref-card p-5">
+          <h3 className="mb-4 text-base font-semibold text-slate-800">Upcoming Events</h3>
+          <p className="text-sm text-slate-500">No events scheduled yet.</p>
+          <button type="button" className="ref-btn-outline mt-5 w-full" disabled>
+            View All
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
