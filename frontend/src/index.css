@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-sky-50 text-slate-800;
+    background-image:
+      radial-gradient(circle at 10% 10%, rgba(186, 230, 253, 0.55), transparent 30%),
+      radial-gradient(circle at 90% 15%, rgba(224, 242, 254, 0.7), transparent 35%),
+      linear-gradient(135deg, #f8fdff 0%, #eef8ff 45%, #f5fbff 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .premium-glass {
+    @apply border border-sky-100/80 bg-white/70 backdrop-blur-xl;
+    box-shadow: 0 10px 30px rgba(14, 116, 144, 0.08);
+  }
+
+  .premium-card {
+    @apply premium-glass rounded-2xl p-4;
+  }
+
+  .premium-title {
+    @apply text-slate-900;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .premium-input {
+    @apply rounded-xl border border-sky-200 bg-white/80 px-3 py-2 text-sm text-slate-700 outline-none transition;
+  }
+
+  .premium-input:focus {
+    @apply border-sky-400 ring-2 ring-sky-200;
+  }
+
+  .premium-btn {
+    @apply rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-4 py-2 text-sm font-medium text-white transition hover:from-sky-600 hover:to-cyan-600 disabled:opacity-60;
+  }
+
+  .premium-btn-soft {
+    @apply rounded-xl border border-sky-200 bg-white/70 px-4 py-2 text-sm text-slate-700 transition hover:bg-sky-50;
+  }
+}
