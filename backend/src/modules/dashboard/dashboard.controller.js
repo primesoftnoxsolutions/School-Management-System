@@ -2,9 +2,13 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { User } from "../../models/User.js";
 import { Student } from "../../models/Student.js";
 import { Admission } from "../../models/Admission.js";
+import { Attendance } from "../../models/Attendance.js";
+import { getPendingFeesSummary } from "../fees/fees.service.js";
+import { getOverviewReport } from "../reports/reports.service.js";
+import { getTeacherAttendanceStats } from "../teacher-attendance/teacherAttendance.service.js";
 
 export const superAdminDashboard = asyncHandler(async (_req, res) => {
-  const [totalStudents, totalTeachers, totalStaff, totalOnLeave, monthlyAdmissionsAgg] =
+  const [totalStudents, totalTeachers, totalStaff, totalOnLeave, monthlyAdmissionsAgg, overview, pendingFeeAlerts] =
     await Promise.all([
       Student.countDocuments({ isDeleted: false }),
       User.countDocuments({ role: "TEACHER", isDeleted: false, isActive: true }),
@@ -21,25 +25,42 @@ export const superAdminDashboard = asyncHandler(async (_req, res) => {
         { $sort: { _id: 1 } },
         { $limit: 12 },
       ]),
+      getOverviewReport(),
+      getPendingFeesSummary(),
     ]);
 
-  const [recentAdmissions, classNames] = await Promise.all([
+  const [recentAdmissions, classNames, teacherAttendance, todayStudentAttendance] = await Promise.all([
     Student.find({ isDeleted: false })
       .sort({ createdAt: -1 })
       .limit(5)
       .select("firstName lastName className section admissionDate")
       .lean(),
     Student.distinct("className", { isDeleted: false }),
+    getTeacherAttendanceStats(),
+    (() => {
+      const dayStart = new Date();
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date();
+      dayEnd.setHours(23, 59, 59, 999);
+      return Attendance.find({
+        isDeleted: false,
+        date: { $gte: dayStart, $lte: dayEnd },
+      }).lean();
+    })(),
   ]);
 
   const totalClasses = classNames.filter(Boolean).length;
-  const pendingFees = 0;
-  const feeCollected = 0;
-  const presentTeachers = totalTeachers;
-  const absentTeachers = 0;
-  const presentStudents = totalStudents;
-  const absentStudents = 0;
-  const pendingFeeAlerts = [];
+  const feeCollected = overview.feeCollected;
+  const pendingFees = overview.pendingFees;
+  const presentTeachers = teacherAttendance.presentTeachers;
+  const absentTeachers = teacherAttendance.absentTeachers;
+  const presentStudents = todayStudentAttendance.filter(
+    (row) => row.status === "PRESENT" || row.status === "LATE"
+  ).length;
+  const absentStudents = todayStudentAttendance.filter((row) => row.status === "ABSENT").length;
+  const attendancePercentage = totalStudents
+    ? Math.round((presentStudents / totalStudents) * 100)
+    : 0;
 
   res.status(200).json({
     success: true,
@@ -51,18 +72,18 @@ export const superAdminDashboard = asyncHandler(async (_req, res) => {
         totalStaff,
         feeCollected,
         pendingFees,
-        attendancePercentage: totalStudents ? 100 : 0,
+        attendancePercentage,
         presentTeachers,
         absentTeachers,
         presentStudents,
         absentStudents,
-        totalOnLeave,
+        totalOnLeave: teacherAttendance.onLeave,
       },
       pendingFeeCount: pendingFeeAlerts.length,
       feeStatus: {
         collected: feeCollected,
         pending: pendingFees,
-        overdue: 0,
+        overdue: pendingFeeAlerts.filter((p) => p.dueDate && new Date(p.dueDate) < new Date()).length,
       },
       recentAdmissions: recentAdmissions.map((item) => ({
         id: item._id,
@@ -98,8 +119,6 @@ export const teacherDashboard = asyncHandler(async (req, res) => {
 });
 
 export const getPendingFees = asyncHandler(async (_req, res) => {
-  res.status(200).json({
-    success: true,
-    data: [],
-  });
+  const data = await getPendingFeesSummary();
+  res.status(200).json({ success: true, data });
 });

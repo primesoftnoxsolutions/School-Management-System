@@ -16,4 +16,7 @@ export const env = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "",
   jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  seedAdminEmail: process.env.SEED_ADMIN_EMAIL || "",
+  seedAdminPassword: process.env.SEED_ADMIN_PASSWORD || "",
+  seedAdminName: process.env.SEED_ADMIN_NAME || "Super Admin",
 };

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api/client";
+import FormModal from "../../components/ui/FormModal";
+import PageHeader from "../../components/ui/PageHeader";
+import TablePagination from "../../components/ui/TablePagination";
+import { CLASS_OPTIONS, SECTION_OPTIONS } from "../../constants/classes";
 
 const emptyForm = { className: "", section: "A", subject: "", roomNo: "", schedule: "" };
 
@@ -13,6 +17,7 @@ export default function TeacherClassesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
+  const [showModal, setShowModal] = useState(false);
 
   const load = async (nextPage = page, nextSearch = search) => {
     setLoading(true);
@@ -39,6 +44,7 @@ export default function TeacherClassesPage() {
   const resetForm = () => {
     setForm(emptyForm);
     setEditId(null);
+    setShowModal(false);
   };
 
   const onSubmit = async (event) => {
@@ -69,6 +75,7 @@ export default function TeacherClassesPage() {
       roomNo: item.roomNo || "",
       schedule: item.schedule || "",
     });
+    setShowModal(true);
   };
 
   const onDelete = async (id) => {
@@ -85,57 +92,14 @@ export default function TeacherClassesPage() {
 
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">My Classes</h2>
-        <p className="text-sm text-slate-500">Add, edit and manage your assigned classes.</p>
-      </div>
+      <PageHeader
+        title="My Classes"
+        subtitle="Add, edit and manage your assigned classes."
+        actionLabel="Add Class"
+        onAction={() => { resetForm(); setShowModal(true); }}
+      />
 
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-
-      <form onSubmit={onSubmit} className="ref-card grid grid-cols-1 gap-3 p-5 md:grid-cols-3">
-        <input
-          className="ref-input"
-          placeholder="Class name (e.g. Grade 5)"
-          value={form.className}
-          onChange={(e) => setForm({ ...form, className: e.target.value })}
-          required
-        />
-        <input
-          className="ref-input"
-          placeholder="Section"
-          value={form.section}
-          onChange={(e) => setForm({ ...form, section: e.target.value })}
-        />
-        <input
-          className="ref-input"
-          placeholder="Subject"
-          value={form.subject}
-          onChange={(e) => setForm({ ...form, subject: e.target.value })}
-          required
-        />
-        <input
-          className="ref-input"
-          placeholder="Room no"
-          value={form.roomNo}
-          onChange={(e) => setForm({ ...form, roomNo: e.target.value })}
-        />
-        <input
-          className="ref-input md:col-span-2"
-          placeholder="Schedule (e.g. Mon-Wed 9:00 AM)"
-          value={form.schedule}
-          onChange={(e) => setForm({ ...form, schedule: e.target.value })}
-        />
-        <div className="flex gap-2 md:col-span-3">
-          <button type="submit" className="ref-btn-primary" disabled={saving}>
-            {saving ? "Saving..." : editId ? "Update Class" : "Add Class"}
-          </button>
-          {editId ? (
-            <button type="button" className="ref-btn-outline" onClick={resetForm}>
-              Cancel
-            </button>
-          ) : null}
-        </div>
-      </form>
 
       <div className="ref-card overflow-hidden p-0">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-4">
@@ -164,9 +128,7 @@ export default function TeacherClassesPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">
-                  Loading...
-                </td>
+                <td colSpan={5} className="px-5 py-6 text-slate-500">Loading...</td>
               </tr>
             ) : items.length ? (
               items.map((item) => (
@@ -177,49 +139,45 @@ export default function TeacherClassesPage() {
                   <td className="px-5 py-3 text-slate-700">{item.roomNo || "-"}</td>
                   <td className="px-5 py-3">
                     <div className="flex gap-2">
-                      <button type="button" className="ref-btn-outline" onClick={() => onEdit(item)}>
-                        Edit
-                      </button>
-                      <button type="button" className="ref-btn-danger" onClick={() => onDelete(item._id)}>
-                        Delete
-                      </button>
+                      <button type="button" className="ref-btn-outline" onClick={() => onEdit(item)}>Edit</button>
+                      <button type="button" className="ref-btn-danger" onClick={() => onDelete(item._id)}>Delete</button>
                     </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">
-                  No classes yet. Add your first class above.
-                </td>
+                <td colSpan={5} className="px-5 py-6 text-slate-500">No classes yet. Click Add Class to get started.</td>
               </tr>
             )}
           </tbody>
         </table>
-        {pagination.totalPages > 1 ? (
-          <div className="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
-            <button
-              type="button"
-              className="ref-btn-outline"
-              disabled={page <= 1}
-              onClick={() => load(page - 1, search)}
-            >
-              Previous
-            </button>
-            <span className="text-sm text-slate-500">
-              Page {page} of {pagination.totalPages}
-            </span>
-            <button
-              type="button"
-              className="ref-btn-outline"
-              disabled={page >= pagination.totalPages}
-              onClick={() => load(page + 1, search)}
-            >
-              Next
-            </button>
-          </div>
-        ) : null}
+        <TablePagination
+          page={page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          onPrev={() => load(Math.max(page - 1, 1), search)}
+          onNext={() => load(Math.min(page + 1, pagination.totalPages), search)}
+        />
       </div>
+
+      <FormModal open={showModal} title={editId ? "Edit Class" : "Add Class"} onClose={resetForm}>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <select className="ref-input" value={form.className} onChange={(e) => setForm({ ...form, className: e.target.value })} required>
+            <option value="">Select class *</option>
+            {CLASS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="ref-input" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>
+            {SECTION_OPTIONS.map((s) => <option key={s} value={s}>Section {s}</option>)}
+          </select>
+          <input className="ref-input sm:col-span-2" placeholder="Subject *" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
+          <input className="ref-input" placeholder="Room no" value={form.roomNo} onChange={(e) => setForm({ ...form, roomNo: e.target.value })} />
+          <input className="ref-input" placeholder="Schedule" value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })} />
+          <button type="submit" className="ref-btn-primary sm:col-span-2" disabled={saving}>
+            {saving ? "Saving..." : editId ? "Update Class" : "Add Class"}
+          </button>
+        </form>
+      </FormModal>
     </section>
   );
 }

@@ -5,9 +5,18 @@ import TeacherSidebar from "../components/layout/TeacherSidebar";
 import TopHeader from "../components/layout/TopHeader";
 import TeacherTopHeader from "../components/layout/TeacherTopHeader";
 import AdmissionsPage from "./AdmissionsPage";
+import StudentsPage from "./StudentsPage";
+import FeeManagementPage from "./FeeManagementPage";
+import FeeRefundPage from "./FeeRefundPage";
+import FineManagementPage from "./FineManagementPage";
+import PayrollPage from "./PayrollPage";
+import ReportsPage from "./ReportsPage";
+import TimeAttendancePage from "./TimeAttendancePage";
 import { logout } from "../store/authSlice";
 import RoleDashboard from "./RoleDashboard";
 import ModuleDataPage from "./ModuleDataPage";
+import StudentPortfoliosPage from "./StudentPortfoliosPage";
+import SchoolLeavingPage from "./SchoolLeavingPage";
 import TeachersManagementPage from "./TeachersManagementPage";
 import TeacherPanelPage from "./TeacherPanelPage";
 import TeacherClassesPage from "./teacher/TeacherClassesPage";
@@ -44,6 +53,15 @@ export default function DashboardPage() {
     }
     if (selected === "Teachers") return <TeachersManagementPage />;
     if (selected === "Admissions") return <AdmissionsPage role={user?.role} />;
+    if (selected === "Students") return <StudentsPage role={user?.role} />;
+    if (selected === "Fee Management") return <FeeManagementPage role={user?.role} />;
+    if (selected === "Fee Refund") return <FeeRefundPage role={user?.role} />;
+    if (selected === "Fine Management") return <FineManagementPage role={user?.role} />;
+    if (selected === "Payroll") return <PayrollPage role={user?.role} />;
+    if (selected === "Reports") return <ReportsPage />;
+    if (selected === "Time & Attendance") return <TimeAttendancePage />;
+    if (selected === "Students Portfolios") return <StudentPortfoliosPage />;
+    if (selected === "School Leaving") return <SchoolLeavingPage role={user?.role} />;
     return <ModuleDataPage title={selected} />;
   };
 
@@ -63,7 +81,7 @@ export default function DashboardPage() {
           onLogout={() => dispatch(logout())}
         />
       )}
-      <main className="ref-main h-screen overflow-y-auto lg:ml-64">
+      <main className="ref-main scrollbar-hide h-screen overflow-y-auto lg:ml-64">
         {isTeacher ? <TeacherTopHeader user={user} /> : <TopHeader user={user} />}
         <div className="px-6 pb-8 lg:px-8">
           {isTeacher ? renderTeacherContent() : renderAdminContent()}

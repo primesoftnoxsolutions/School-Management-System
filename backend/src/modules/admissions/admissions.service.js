@@ -11,15 +11,19 @@ export const createAdmissionService = async (payload, actorId) => {
     "firstName",
     "lastName",
     "gender",
-    "dateOfBirth",
     "guardianName",
     "guardianPhone",
     "className",
+    "section",
   ];
 
   const missing = required.filter((field) => !payload[field]);
   if (missing.length) {
     throw new ApiError(400, `Missing required fields: ${missing.join(", ")}`);
+  }
+
+  if (!payload.dateOfBirth) {
+    payload.dateOfBirth = "2010-01-01";
   }
 
   const preparedPayload = {

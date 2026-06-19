@@ -9,6 +9,7 @@ export default function Sidebar({ selected, onSelect, onLogout, role }) {
     "Dashboard",
     "Teachers",
     "Admissions",
+    "Students",
     "Fee Management",
     "Fee Refund",
     "Fine Management",
@@ -35,7 +36,7 @@ export default function Sidebar({ selected, onSelect, onLogout, role }) {
           <p className="mt-1 text-[11px] text-slate-500">School Management System</p>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="scrollbar-sidebar flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {navItems.map((item) => {
             const active = selected === item;
             const Icon = navIconMap[item];

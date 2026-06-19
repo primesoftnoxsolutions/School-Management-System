@@ -23,9 +23,12 @@ Enterprise-grade School ERP starter scaffold with:
 4. Run both apps
    - `npm run dev`
 
-## Default Seed User
+## First Admin (optional)
 
-- Email: `admin@schoolerp.local`
-- Password: `Admin@123`
+Set these in `backend/.env` to auto-create the first Super Admin when the database has none:
 
-This user is seeded automatically on backend startup if not found.
+- `SEED_ADMIN_EMAIL`
+- `SEED_ADMIN_PASSWORD`
+- `SEED_ADMIN_NAME` (optional)
+
+No default users are created without these variables.

@@ -3,7 +3,9 @@ import {
   createTeacher,
   getMyTeacherPanel,
   getTeacherActivities,
+  getTeachersByClass,
   listTeachers,
+  updateTeacher,
 } from "./teachers.service.js";
 
 export const createTeacherAccount = asyncHandler(async (req, res) => {
@@ -11,13 +13,27 @@ export const createTeacherAccount = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: teacher });
 });
 
+export const putTeacherAccount = asyncHandler(async (req, res) => {
+  const teacher = await updateTeacher(req.params.id, req.body, req.user._id.toString());
+  res.status(200).json({ success: true, data: teacher });
+});
+
 export const getTeachers = asyncHandler(async (req, res) => {
   const page = Math.max(Number(req.query.page || 1), 1);
   const limit = Math.min(Math.max(Number(req.query.limit || 10), 1), 100);
   const search = (req.query.search || "").trim();
+  const className = (req.query.className || "").trim();
+  const section = (req.query.section || "").trim();
 
-  const result = await listTeachers({ page, limit, search });
+  const result = await listTeachers({ page, limit, search, className, section });
   res.status(200).json({ success: true, data: result });
+});
+
+export const getTeachersForClass = asyncHandler(async (req, res) => {
+  const className = (req.query.className || "").trim();
+  const section = (req.query.section || "").trim();
+  const data = await getTeachersByClass({ className, section });
+  res.status(200).json({ success: true, data });
 });
 
 export const monitorTeacherActivities = asyncHandler(async (req, res) => {

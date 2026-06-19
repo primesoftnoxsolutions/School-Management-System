@@ -105,4 +105,31 @@
   .premium-btn-soft {
     @apply rounded-xl border border-sky-200 bg-white/70 px-4 py-2 text-sm text-slate-700 transition hover:bg-sky-50;
   }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: #3b82f6 transparent;
+  }
+
+  .scrollbar-sidebar::-webkit-scrollbar {
+    width: 3px;
+  }
+
+  .scrollbar-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-sidebar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: #3b82f6;
+  }
 }

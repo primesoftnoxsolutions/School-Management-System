@@ -1,78 +1,78 @@
 import { User } from "../models/User.js";
+import { env } from "../config/env.js";
 
-const SUPER_ADMIN = {
-  fullName: "Super Admin",
-  email: "naseer@idealschool.com",
-  password: "Naseer@59317",
-  role: "SUPER_ADMIN",
+const DEV_ADMIN_EMAIL = "admin@schoolerp.local";
+const DEV_ADMIN_PASSWORD = "Admin@123";
+const REMOVED_DEFAULT_EMAILS = [
+  "accountant@schoolerp.local",
+  "teacher@schoolerp.local",
+];
+
+const resolveSeedCredentials = () => {
+  const isProd = env.nodeEnv === "production";
+  const email = (env.seedAdminEmail || (!isProd ? DEV_ADMIN_EMAIL : "")).toLowerCase().trim();
+  const password = env.seedAdminPassword || (!isProd ? DEV_ADMIN_PASSWORD : "");
+  const fullName = env.seedAdminName || "Super Admin";
+  return { email, password, fullName, isProd };
 };
 
-const LEGACY_ADMIN_EMAIL = "admin@schoolerp.local";
-
 export const seedSuperAdmin = async () => {
-  await User.deleteOne({ email: LEGACY_ADMIN_EMAIL });
+  await User.updateMany(
+    { email: { $in: REMOVED_DEFAULT_EMAILS }, isDeleted: false },
+    { $set: { isDeleted: true, updatedBy: "system" } }
+  );
 
-  let admin = await User.findOne({ email: SUPER_ADMIN.email }).select("+password");
+  const { email, password, fullName, isProd } = resolveSeedCredentials();
 
-  if (!admin) {
-    const existingSuperAdmin = await User.findOne({
-      role: "SUPER_ADMIN",
-      isDeleted: false,
-    }).select("+password");
+  if (!email || !password) {
+    console.warn(
+      "Super admin seed skipped. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD in .env (required on live/production)."
+    );
+    return;
+  }
 
-    if (existingSuperAdmin) {
-      existingSuperAdmin.email = SUPER_ADMIN.email;
-      existingSuperAdmin.fullName = SUPER_ADMIN.fullName;
-      existingSuperAdmin.password = SUPER_ADMIN.password;
-      existingSuperAdmin.isActive = true;
-      await existingSuperAdmin.save();
-      admin = existingSuperAdmin;
-    } else {
-      await User.create({
-        ...SUPER_ADMIN,
-        createdBy: "system",
-        updatedBy: "system",
-      });
-      console.log(`Seeded super admin: ${SUPER_ADMIN.email}`);
-      admin = null;
+  let user = await User.findOne({ email, isDeleted: false }).select("+password");
+
+  if (user) {
+    if (user.role !== "SUPER_ADMIN") {
+      user.role = "SUPER_ADMIN";
+      user.updatedBy = "system";
+      await user.save();
     }
-  } else {
-    admin.fullName = SUPER_ADMIN.fullName;
-    admin.password = SUPER_ADMIN.password;
-    admin.isActive = true;
-    await admin.save();
+
+    if (!isProd) {
+      const passwordOk = await user.comparePassword(password);
+      if (!passwordOk) {
+        user.password = password;
+        user.updatedBy = "system";
+        await user.save();
+        console.log(`Dev: synced super admin password for ${email}`);
+      }
+    }
+
+    if (!isProd && email === DEV_ADMIN_EMAIL) {
+      console.log(`Dev super admin ready: ${email} / ${DEV_ADMIN_PASSWORD}`);
+    }
+    return;
   }
 
-  if (admin) {
-    console.log(`Super admin ready: ${SUPER_ADMIN.email}`);
+  const adminCount = await User.countDocuments({ role: "SUPER_ADMIN", isDeleted: false });
+  if (adminCount > 0 && isProd) {
+    console.log("Super admin already exists in production — seed skipped.");
+    return;
   }
 
-  const accountantEmail = "accountant@schoolerp.local";
-  const teacherEmail = "teacher@schoolerp.local";
+  await User.create({
+    fullName,
+    email,
+    password,
+    role: "SUPER_ADMIN",
+    createdBy: "system",
+    updatedBy: "system",
+  });
 
-  const accountantExists = await User.findOne({ email: accountantEmail });
-  if (!accountantExists) {
-    await User.create({
-      fullName: "Default Accountant",
-      email: accountantEmail,
-      password: "Account@123",
-      role: "ACCOUNTANT",
-      createdBy: "system",
-      updatedBy: "system",
-    });
-    console.log("Seeded default accountant: accountant@schoolerp.local / Account@123");
-  }
-
-  const teacherExists = await User.findOne({ email: teacherEmail });
-  if (!teacherExists) {
-    await User.create({
-      fullName: "Default Teacher",
-      email: teacherEmail,
-      password: "Teacher@123",
-      role: "TEACHER",
-      createdBy: "system",
-      updatedBy: "system",
-    });
-    console.log("Seeded default teacher: teacher@schoolerp.local / Teacher@123");
+  console.log(`Seeded super admin: ${email}`);
+  if (!isProd && email === DEV_ADMIN_EMAIL) {
+    console.log(`Login with: ${DEV_ADMIN_EMAIL} / ${DEV_ADMIN_PASSWORD}`);
   }
 };
