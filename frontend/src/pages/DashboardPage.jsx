@@ -12,7 +12,7 @@ import FineManagementPage from "./FineManagementPage";
 import PayrollPage from "./PayrollPage";
 import ReportsPage from "./ReportsPage";
 import TimeAttendancePage from "./TimeAttendancePage";
-import { logout } from "../store/authSlice";
+import { logoutUser } from "../store/authSlice";
 import RoleDashboard from "./RoleDashboard";
 import ModuleDataPage from "./ModuleDataPage";
 import StudentPortfoliosPage from "./StudentPortfoliosPage";
@@ -71,14 +71,14 @@ export default function DashboardPage() {
         <TeacherSidebar
           selected={selected}
           onSelect={setSelected}
-          onLogout={() => dispatch(logout())}
+          onLogout={() => dispatch(logoutUser())}
         />
       ) : (
         <Sidebar
           role={user?.role}
           selected={selected}
           onSelect={setSelected}
-          onLogout={() => dispatch(logout())}
+          onLogout={() => dispatch(logoutUser())}
         />
       )}
       <main className="ref-main scrollbar-hide h-screen overflow-y-auto lg:ml-64">

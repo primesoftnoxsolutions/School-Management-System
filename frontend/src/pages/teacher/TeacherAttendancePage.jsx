@@ -1,27 +1,31 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api/client";
+import FormModal from "../../components/ui/FormModal";
 
-const emptyForm = {
-  studentId: "",
-  className: "",
-  section: "A",
-  date: new Date().toISOString().slice(0, 10),
-  status: "PRESENT",
-  remarks: "",
-};
+const today = () => new Date().toISOString().slice(0, 10);
+
+const STATUS_BUTTONS = [
+  { value: "PRESENT", label: "Present", active: "bg-emerald-600 text-white border-emerald-600" },
+  { value: "ABSENT", label: "Absent", active: "bg-rose-600 text-white border-rose-600" },
+  { value: "LATE", label: "Late", active: "bg-amber-500 text-white border-amber-500" },
+  { value: "LEAVE", label: "Leave", active: "bg-sky-600 text-white border-sky-600" },
+];
 
 export default function TeacherAttendancePage() {
-  const [form, setForm] = useState(emptyForm);
-  const [editId, setEditId] = useState(null);
-  const [items, setItems] = useState([]);
   const [classOptions, setClassOptions] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [summaryRows, setSummaryRows] = useState([]);
   const [students, setStudents] = useState([]);
+  const [todayRecords, setTodayRecords] = useState({});
+  const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [markingId, setMarkingId] = useState("");
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
+
+  const selectedClass = classOptions.find((c) => c._id === selectedClassId) || null;
 
   const loadClasses = async () => {
     try {
@@ -32,119 +36,164 @@ export default function TeacherAttendancePage() {
     }
   };
 
-  const loadStudents = async (className, section) => {
-    if (!className) {
-      setStudents([]);
+  const loadSummary = async (className, section, from, to) => {
+    if (!className || !from || !to) {
+      setSummaryRows([]);
       return;
     }
-    try {
-      const { data } = await api.get("/teacher-panel/students", {
-        params: { className, section: section || "A" },
-      });
-      setStudents(data.data || []);
-    } catch {
-      setStudents([]);
-    }
-  };
-
-  const load = async (nextPage = page, nextSearch = search) => {
     setLoading(true);
     setError("");
     try {
-      const { data } = await api.get("/teacher-panel/attendance", {
-        params: { page: nextPage, limit: 10, search: nextSearch },
+      const { data } = await api.get("/teacher-panel/attendance/summary", {
+        params: { className, section: section || "A", fromDate: from, toDate: to },
       });
-      setItems(data.data.items || []);
-      setPagination({ totalPages: data.data.totalPages || 1, total: data.data.total || 0 });
-      setPage(data.data.page || nextPage);
+      setSummaryRows(data.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load attendance");
-      setItems([]);
+      setError(err.response?.data?.message || "Failed to load attendance summary");
+      setSummaryRows([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadModalData = async (className, section) => {
+    setModalLoading(true);
+    try {
+      const [studentsRes, attendanceRes] = await Promise.all([
+        api.get("/teacher-panel/students", { params: { className, section: section || "A" } }),
+        api.get("/teacher-panel/attendance", {
+          params: {
+            className,
+            section: section || "A",
+            date: today(),
+            page: 1,
+            limit: 200,
+          },
+        }),
+      ]);
+
+      setStudents(studentsRes.data.data || []);
+
+      const map = {};
+      (attendanceRes.data.data?.items || []).forEach((item) => {
+        const sid = item.studentId?._id || item.studentId;
+        if (sid) {
+          map[sid] = { id: item._id, status: item.status };
+        }
+      });
+      setTodayRecords(map);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to load students");
+      setStudents([]);
+      setTodayRecords({});
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadClasses();
-    load(1, "");
   }, []);
 
   useEffect(() => {
-    loadStudents(form.className, form.section);
-  }, [form.className, form.section]);
-
-  const resetForm = () => {
-    setForm({ ...emptyForm, date: new Date().toISOString().slice(0, 10) });
-    setEditId(null);
-  };
-
-  const onClassSelect = (value) => {
-    const selected = classOptions.find((c) => c._id === value);
-    if (selected) {
-      setForm({
-        ...form,
-        className: selected.className,
-        section: selected.section || "A",
-        studentId: "",
-      });
+    if (selectedClass) {
+      loadSummary(selectedClass.className, selectedClass.section, fromDate, toDate);
+    } else {
+      setSummaryRows([]);
     }
+  }, [selectedClassId, fromDate, toDate]);
+
+  const onClassChange = async (classId) => {
+    setSelectedClassId(classId);
+    if (!classId) {
+      setShowModal(false);
+      setStudents([]);
+      return;
+    }
+    const cls = classOptions.find((c) => c._id === classId);
+    if (!cls) return;
+    setShowModal(true);
+    await loadModalData(cls.className, cls.section);
   };
 
-  const onSubmit = async (event) => {
-    event.preventDefault();
-    setSaving(true);
+  const markAttendance = async (studentId, status) => {
+    if (!selectedClass) return;
+    setMarkingId(studentId);
     setError("");
+    const payload = {
+      studentId,
+      className: selectedClass.className,
+      section: selectedClass.section || "A",
+      date: today(),
+      status,
+      remarks: "",
+    };
+
     try {
-      if (editId) {
-        await api.put(`/teacher-panel/attendance/${editId}`, {
-          status: form.status,
-          remarks: form.remarks,
-          date: form.date,
-        });
+      const existing = todayRecords[studentId];
+      if (existing?.id) {
+        await api.put(`/teacher-panel/attendance/${existing.id}`, { status, date: today(), remarks: "" });
+        setTodayRecords((prev) => ({
+          ...prev,
+          [studentId]: { ...existing, status },
+        }));
       } else {
-        await api.post("/teacher-panel/attendance", form);
+        const { data } = await api.post("/teacher-panel/attendance", payload);
+        setTodayRecords((prev) => ({
+          ...prev,
+          [studentId]: { id: data.data._id, status },
+        }));
       }
-      resetForm();
-      await load(1, search);
+      if (fromDate && toDate) {
+        await loadSummary(selectedClass.className, selectedClass.section, fromDate, toDate);
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save attendance");
+      setError(err.response?.data?.message || "Failed to mark attendance");
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const onEdit = (item) => {
-    setEditId(item._id);
-    setForm({
-      studentId: item.studentId?._id || item.studentId,
-      className: item.className,
-      section: item.section || "A",
-      date: item.date ? new Date(item.date).toISOString().slice(0, 10) : "",
-      status: item.status,
-      remarks: item.remarks || "",
-    });
-  };
-
-  const onDelete = async (id) => {
-    if (!window.confirm("Delete this attendance record?")) return;
-    try {
-      await api.delete(`/teacher-panel/attendance/${id}`);
-      if (editId === id) resetForm();
-      await load(page, search);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete attendance");
+      setMarkingId("");
     }
   };
 
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
-        <p className="text-sm text-slate-500">Record and manage daily student attendance.</p>
-      </div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Mark Attendance</h2>
+          <p className="text-sm text-slate-500">Record and manage daily student attendance.</p>
+        </div>
 
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            className="ref-input min-w-[180px]"
+            value={selectedClassId}
+            onChange={(e) => onClassChange(e.target.value)}
+            disabled={!classOptions.length}
+          >
+            <option value="">Select class</option>
+            {classOptions.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.className} - {c.section} ({c.subject})
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            className="ref-input"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            placeholder="From"
+            title="From date"
+          />
+          <input
+            type="date"
+            className="ref-input"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            placeholder="To"
+            title="To date"
+          />
+        </div>
+      </div>
 
       {!classOptions.length ? (
         <div className="ref-card p-5 text-sm text-slate-600">
@@ -152,138 +201,121 @@ export default function TeacherAttendancePage() {
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className="ref-card grid grid-cols-1 gap-3 p-5 md:grid-cols-3">
-        <select
-          className="ref-input"
-          value={classOptions.find((c) => c.className === form.className && c.section === form.section)?._id || ""}
-          onChange={(e) => onClassSelect(e.target.value)}
-          required={!editId}
-          disabled={!!editId}
-        >
-          <option value="">Select class</option>
-          {classOptions.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.className} - {c.section} ({c.subject})
-            </option>
-          ))}
-        </select>
-        <select
-          className="ref-input"
-          value={form.studentId}
-          onChange={(e) => setForm({ ...form, studentId: e.target.value })}
-          required={!editId}
-          disabled={!!editId || !form.className}
-        >
-          <option value="">Select student</option>
-          {students.map((s) => (
-            <option key={s._id} value={s._id}>
-              {s.firstName} {s.lastName} ({s.admissionNo})
-            </option>
-          ))}
-        </select>
-        <input
-          type="date"
-          className="ref-input"
-          value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
-          required
-        />
-        <select
-          className="ref-input"
-          value={form.status}
-          onChange={(e) => setForm({ ...form, status: e.target.value })}
-        >
-          <option value="PRESENT">Present</option>
-          <option value="ABSENT">Absent</option>
-          <option value="LATE">Late</option>
-          <option value="LEAVE">Leave</option>
-        </select>
-        <input
-          className="ref-input md:col-span-2"
-          placeholder="Remarks (optional)"
-          value={form.remarks}
-          onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-        />
-        <div className="flex gap-2 md:col-span-3">
-          <button type="submit" className="ref-btn-primary" disabled={saving || !classOptions.length}>
-            {saving ? "Saving..." : editId ? "Update Attendance" : "Mark Attendance"}
-          </button>
-          {editId ? (
-            <button type="button" className="ref-btn-outline" onClick={resetForm}>
-              Cancel
-            </button>
-          ) : null}
-        </div>
-      </form>
+      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
       <div className="ref-card overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-800">Attendance Records ({pagination.total})</h3>
-          <input
-            className="ref-input ml-auto w-full max-w-xs"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load(1, search)}
-          />
-          <button type="button" className="ref-btn-outline" onClick={() => load(1, search)}>
-            Search
-          </button>
+        <div className="border-b border-slate-100 px-5 py-4">
+          <h3 className="text-base font-semibold text-slate-800">
+            Attendance Records ({summaryRows.length})
+          </h3>
         </div>
         <table className="min-w-full text-sm">
           <thead className="bg-slate-50 text-left text-slate-500">
             <tr>
+              <th className="px-5 py-3 font-medium">Roll No#</th>
               <th className="px-5 py-3 font-medium">Student</th>
-              <th className="px-5 py-3 font-medium">Class</th>
-              <th className="px-5 py-3 font-medium">Date</th>
-              <th className="px-5 py-3 font-medium">Status</th>
-              <th className="px-5 py-3 font-medium">Actions</th>
+              <th className="px-5 py-3 font-medium">Present</th>
+              <th className="px-5 py-3 font-medium">Absent</th>
+              <th className="px-5 py-3 font-medium">Late</th>
+              <th className="px-5 py-3 font-medium">Leave</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">
+                <td colSpan={6} className="px-5 py-6 text-slate-500">
                   Loading...
                 </td>
               </tr>
-            ) : items.length ? (
-              items.map((item) => (
-                <tr key={item._id} className="border-t border-slate-100">
-                  <td className="px-5 py-3 text-slate-700">
-                    {item.studentId
-                      ? `${item.studentId.firstName} ${item.studentId.lastName}`
-                      : "-"}
-                  </td>
-                  <td className="px-5 py-3 text-slate-700">
-                    {item.className} - {item.section}
-                  </td>
-                  <td className="px-5 py-3 text-slate-700">
-                    {item.date ? new Date(item.date).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="px-5 py-3 text-slate-700">{item.status}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex gap-2">
-                      <button type="button" className="ref-btn-outline" onClick={() => onEdit(item)}>
-                        Edit
-                      </button>
-                      <button type="button" className="ref-btn-danger" onClick={() => onDelete(item._id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+            ) : !selectedClass || !fromDate || !toDate ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-6 text-slate-500">
+                  Select class, from date and to date to view attendance summary.
+                </td>
+              </tr>
+            ) : summaryRows.length ? (
+              summaryRows.map((row) => (
+                <tr key={row.studentId} className="border-t border-slate-100">
+                  <td className="px-5 py-3 text-slate-700">{row.rollNo}</td>
+                  <td className="px-5 py-3 text-slate-700">{row.name}</td>
+                  <td className="px-5 py-3 text-slate-700">{row.present}</td>
+                  <td className="px-5 py-3 text-slate-700">{row.absent}</td>
+                  <td className="px-5 py-3 text-slate-700">{row.late}</td>
+                  <td className="px-5 py-3 text-slate-700">{row.leave}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">
-                  No attendance records yet.
+                <td colSpan={6} className="px-5 py-6 text-slate-500">
+                  No attendance records for this period.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <FormModal
+        open={showModal && !!selectedClass}
+        title={
+          selectedClass
+            ? `Mark Attendance — ${selectedClass.className} - ${selectedClass.section}`
+            : "Mark Attendance"
+        }
+        onClose={() => setShowModal(false)}
+        wide
+      >
+        {modalLoading ? (
+          <p className="text-sm text-slate-500">Loading students...</p>
+        ) : students.length ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-50 text-left text-slate-500">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Roll No#</th>
+                  <th className="px-3 py-2 font-medium">Name</th>
+                  <th className="px-3 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((student) => {
+                  const currentStatus = todayRecords[student._id]?.status;
+                  const isMarking = markingId === student._id;
+                  return (
+                    <tr key={student._id} className="border-t border-slate-100">
+                      <td className="px-3 py-3 text-slate-700">{student.admissionNo}</td>
+                      <td className="px-3 py-3 text-slate-700">
+                        {student.firstName} {student.lastName}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          {STATUS_BUTTONS.map((btn) => (
+                            <button
+                              key={btn.value}
+                              type="button"
+                              disabled={isMarking}
+                              onClick={() => markAttendance(student._id, btn.value)}
+                              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                currentStatus === btn.value
+                                  ? btn.active
+                                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {btn.label}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">No students found in this class.</p>
+        )}
+      </FormModal>
     </section>
   );
 }

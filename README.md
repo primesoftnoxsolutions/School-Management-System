@@ -3,7 +3,7 @@
 Enterprise-grade School ERP starter scaffold with:
 
 - Frontend: React + Vite + Tailwind + Redux Toolkit
-- Backend: Node.js + Express + MongoDB + JWT + RBAC
+- Backend: Node.js + Express + MongoDB + Session Auth + RBAC
 - Base modules: Auth and Dashboard scaffolding
 
 ## Project Structure

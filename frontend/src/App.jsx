@@ -6,15 +6,13 @@ import { fetchMe } from "./store/authSlice";
 
 export default function App() {
   const dispatch = useDispatch();
-  const { accessToken, user, loading } = useSelector((state) => state.auth);
+  const { user, loading, sessionChecked } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    if (accessToken && !user) {
-      dispatch(fetchMe());
-    }
-  }, [accessToken, user, dispatch]);
+    dispatch(fetchMe());
+  }, [dispatch]);
 
-  if (accessToken && loading && !user) {
+  if (!sessionChecked || (loading && !user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-600">
         Loading session...
@@ -22,5 +20,5 @@ export default function App() {
     );
   }
 
-  return accessToken ? <DashboardPage /> : <LoginPage />;
+  return user ? <DashboardPage /> : <LoginPage />;
 }

@@ -124,6 +124,9 @@ export const listAttendance = async (teacherId, query) => {
   const { page, limit, search, skip } = parsePage(query);
   const filter = { teacherId, isDeleted: false };
 
+  if (query.className) filter.className = query.className;
+  if (query.section) filter.section = query.section;
+
   if (query.date) {
     const day = new Date(query.date);
     day.setHours(0, 0, 0, 0);
@@ -150,6 +153,64 @@ export const listAttendance = async (teacherId, query) => {
   ]);
 
   return paginate(items, total, page, limit);
+};
+
+export const listAttendanceSummary = async (teacherId, query) => {
+  const { className, section, fromDate, toDate } = query;
+  if (!className || !fromDate || !toDate) {
+    throw new ApiError(400, "className, fromDate and toDate are required");
+  }
+
+  await listStudentsForClass(teacherId, className, section);
+
+  const from = new Date(fromDate);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(toDate);
+  to.setHours(23, 59, 59, 999);
+
+  if (from > to) throw new ApiError(400, "fromDate cannot be after toDate");
+
+  const students = await Student.find({
+    className,
+    section: section || "A",
+    isDeleted: false,
+  })
+    .select("_id admissionNo firstName lastName")
+    .sort({ admissionNo: 1 })
+    .lean();
+
+  const records = await Attendance.find({
+    teacherId,
+    className,
+    section: section || "A",
+    isDeleted: false,
+    date: { $gte: from, $lte: to },
+  }).lean();
+
+  const countsByStudent = {};
+  records.forEach((record) => {
+    const sid = record.studentId.toString();
+    if (!countsByStudent[sid]) {
+      countsByStudent[sid] = { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
+    }
+    if (countsByStudent[sid][record.status] !== undefined) {
+      countsByStudent[sid][record.status] += 1;
+    }
+  });
+
+  return students.map((student) => {
+    const sid = student._id.toString();
+    const counts = countsByStudent[sid] || { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
+    return {
+      studentId: student._id,
+      rollNo: student.admissionNo,
+      name: `${student.firstName} ${student.lastName}`.trim(),
+      present: counts.PRESENT,
+      absent: counts.ABSENT,
+      late: counts.LATE,
+      leave: counts.LEAVE,
+    };
+  });
 };
 
 export const createAttendance = async (teacherId, payload) => {

@@ -1,7 +1,6 @@
 import { User } from "../../models/User.js";
 import { TeacherActivity } from "../../models/TeacherActivity.js";
 import { ApiError } from "../../utils/apiError.js";
-import { signAccessToken, signRefreshToken } from "../../services/tokenService.js";
 
 export const registerUser = async ({ fullName, email, password, role, actorId }) => {
   const exists = await User.findOne({ email: email.toLowerCase(), isDeleted: false });
@@ -39,8 +38,6 @@ export const loginUser = async ({ email, password }) => {
     throw new ApiError(401, "Invalid credentials");
   }
 
-  const payload = { sub: user._id.toString(), role: user.role };
-
   if (user.role === "TEACHER") {
     TeacherActivity.create({
       teacherId: user._id,
@@ -54,8 +51,6 @@ export const loginUser = async ({ email, password }) => {
   }
 
   return {
-    accessToken: signAccessToken(payload),
-    refreshToken: signRefreshToken(payload),
     user: {
       id: user._id,
       fullName: user.fullName,
@@ -64,3 +59,15 @@ export const loginUser = async ({ email, password }) => {
     },
   };
 };
+
+export const logoutUser = async (session) =>
+  new Promise((resolve, reject) => {
+    if (!session) {
+      resolve();
+      return;
+    }
+    session.destroy((err) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });

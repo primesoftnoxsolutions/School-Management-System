@@ -1,6 +1,6 @@
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/apiError.js";
-import { loginUser, registerUser } from "./auth.service.js";
+import { loginUser, logoutUser, registerUser } from "./auth.service.js";
 
 export const register = asyncHandler(async (req, res) => {
   const { fullName, email, password, role } = req.body;
@@ -26,7 +26,16 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const result = await loginUser({ email, password });
+  req.session.userId = result.user.id.toString();
+  req.session.role = result.user.role;
+
   res.status(200).json({ success: true, data: result });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  await logoutUser(req.session);
+  res.clearCookie("connect.sid");
+  res.status(200).json({ success: true, message: "Logged out" });
 });
 
 export const me = asyncHandler(async (req, res) => {

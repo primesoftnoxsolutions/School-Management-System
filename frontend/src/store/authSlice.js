@@ -3,8 +3,8 @@ import api from "../services/api/client";
 
 const initialState = {
   user: null,
-  accessToken: localStorage.getItem("accessToken"),
   loading: false,
+  sessionChecked: false,
   error: null,
 };
 
@@ -29,14 +29,21 @@ export const fetchMe = createAsyncThunk("auth/fetchMe", async (_, { rejectWithVa
   }
 });
 
+export const logoutUser = createAsyncThunk("auth/logout", async (_, { rejectWithValue }) => {
+  try {
+    await api.post("/auth/logout");
+  } catch (error) {
+    return rejectWithValue(error.response?.data?.message || "Logout failed");
+  }
+});
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
     logout(state) {
       state.user = null;
-      state.accessToken = null;
-      localStorage.removeItem("accessToken");
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -48,8 +55,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
-        localStorage.setItem("accessToken", action.payload.accessToken);
+        state.sessionChecked = true;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -60,13 +66,17 @@ const authSlice = createSlice({
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.loading = false;
+        state.sessionChecked = true;
         state.user = action.payload;
       })
       .addCase(fetchMe.rejected, (state) => {
         state.loading = false;
+        state.sessionChecked = true;
         state.user = null;
-        state.accessToken = null;
-        localStorage.removeItem("accessToken");
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.user = null;
+        state.error = null;
       });
   },
 });

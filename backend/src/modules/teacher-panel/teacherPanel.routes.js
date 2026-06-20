@@ -3,6 +3,7 @@ import { authorize, protect } from "../../middleware/authMiddleware.js";
 import {
   getAcademicRecords,
   getAttendance,
+  getAttendanceSummary,
   getClassDropdown,
   getClassStudents,
   getClasses,
@@ -31,6 +32,7 @@ router.delete("/classes/:id", ...teacherOnly, removeClass);
 router.get("/class-options", ...teacherOnly, getClassDropdown);
 router.get("/students", ...teacherOnly, getClassStudents);
 
+router.get("/attendance/summary", ...teacherOnly, getAttendanceSummary);
 router.get("/attendance", ...teacherOnly, getAttendance);
 router.post("/attendance", ...teacherOnly, postAttendance);
 router.put("/attendance/:id", ...teacherOnly, putAttendance);

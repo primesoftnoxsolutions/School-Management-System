@@ -11,6 +11,7 @@ import {
   getClassOptions,
   listAcademicRecords,
   listAttendance,
+  listAttendanceSummary,
   listMyClasses,
   listReports,
   listStudentsForClass,
@@ -52,6 +53,11 @@ export const getClassDropdown = asyncHandler(async (req, res) => {
 
 export const getAttendance = asyncHandler(async (req, res) => {
   const data = await listAttendance(req.user._id, req.query);
+  res.status(200).json({ success: true, data });
+});
+
+export const getAttendanceSummary = asyncHandler(async (req, res) => {
+  const data = await listAttendanceSummary(req.user._id, req.query);
   res.status(200).json({ success: true, data });
 });
 
