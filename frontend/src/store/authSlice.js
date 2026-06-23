@@ -6,15 +6,22 @@ const initialState = {
   accessToken: localStorage.getItem("accessToken"),
   loading: false,
   error: null,
+  justLoggedIn: false,
 };
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const login = createAsyncThunk("auth/login", async (payload, { rejectWithValue }) => {
   try {
-    const { data } = await api.post("/auth/login", payload);
+    const [{ data }] = await Promise.all([api.post("/auth/login", payload), wait(900)]);
     return data.data;
   } catch (error) {
+    await wait(500);
     if (!error.response) {
       return rejectWithValue("Server unavailable. Check backend server.");
+    }
+    if ([400, 401, 403].includes(error.response.status)) {
+      return rejectWithValue("Wrong login details");
     }
     return rejectWithValue(error.response?.data?.message || "Login failed");
   }
@@ -36,7 +43,11 @@ const authSlice = createSlice({
     logout(state) {
       state.user = null;
       state.accessToken = null;
+      state.justLoggedIn = false;
       localStorage.removeItem("accessToken");
+    },
+    clearJustLoggedIn(state) {
+      state.justLoggedIn = false;
     },
   },
   extraReducers: (builder) => {
@@ -49,6 +60,7 @@ const authSlice = createSlice({
         state.loading = false;
         state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
+        state.justLoggedIn = true;
         localStorage.setItem("accessToken", action.payload.accessToken);
       })
       .addCase(login.rejected, (state, action) => {
@@ -71,5 +83,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearJustLoggedIn } = authSlice.actions;
 export default authSlice.reducer;

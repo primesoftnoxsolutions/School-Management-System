@@ -4,8 +4,11 @@ import {
   deleteStudent,
   getClassOptions,
   getClassSectionOptions,
+  getNextRollNumber,
   getPromotionClasses,
   getStudentById,
+  getStudentAttendanceCalendar,
+  getStudentAttendanceTotals,
   getStudentFeePortfolio,
   listStudents,
   promoteClass,
@@ -63,7 +66,40 @@ export const getStudentPromotionClasses = asyncHandler(async (_req, res) => {
   res.status(200).json({ success: true, data });
 });
 
+export const getNextStudentRoll = asyncHandler(async (req, res) => {
+  const className = (req.query.className || "").trim();
+  const section = (req.query.section || "A").trim();
+  const rollNumber = await getNextRollNumber(className, section);
+  res.status(200).json({ success: true, data: { rollNumber } });
+});
+
 export const getStudentFeePortfolioHandler = asyncHandler(async (req, res) => {
   const data = await getStudentFeePortfolio(req.params.id);
+  res.status(200).json({ success: true, data });
+});
+
+export const uploadStudentPhotoHandler = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "Photo file is required" });
+  }
+  const url = `/uploads/students/${req.file.filename}`;
+  res.status(201).json({ success: true, data: { url } });
+});
+
+export const getStudentAttendanceTotalsHandler = asyncHandler(async (req, res) => {
+  const ids = (req.query.ids || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const data = await getStudentAttendanceTotals(ids);
+  res.status(200).json({ success: true, data });
+});
+
+export const getStudentAttendanceCalendarHandler = asyncHandler(async (req, res) => {
+  const data = await getStudentAttendanceCalendar({
+    studentId: req.query.studentId,
+    year: Number(req.query.year),
+    month: Number(req.query.month),
+  });
   res.status(200).json({ success: true, data });
 });

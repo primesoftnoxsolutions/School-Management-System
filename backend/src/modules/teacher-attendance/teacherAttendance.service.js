@@ -91,6 +91,72 @@ export const listTeacherAttendance = async (dateInput) => {
   return { date: dayStart, items, stats };
 };
 
+const toLocalDateKey = (dateInput) => {
+  const d = new Date(dateInput);
+  if (Number.isNaN(d.getTime())) return "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+export const getTeacherAttendanceCalendar = async ({ teacherId, year, month, from, to }) => {
+  if (!teacherId) {
+    throw new ApiError(400, "teacherId is required");
+  }
+
+  const teacher = await User.findOne({
+    _id: teacherId,
+    role: "TEACHER",
+    isDeleted: false,
+  })
+    .select("_id fullName")
+    .lean();
+
+  if (!teacher) {
+    throw new ApiError(404, "Teacher not found");
+  }
+
+  let rangeStart;
+  let rangeEnd;
+
+  if (from && to) {
+    rangeStart = startOfDay(from);
+    rangeEnd = endOfDay(to);
+  } else if (year && month) {
+    const monthIndex = month - 1;
+    rangeStart = new Date(year, monthIndex, 1);
+    rangeStart.setHours(0, 0, 0, 0);
+    rangeEnd = new Date(year, monthIndex + 1, 0);
+    rangeEnd.setHours(23, 59, 59, 999);
+  } else {
+    throw new ApiError(400, "Provide from/to or year/month");
+  }
+
+  const records = await TeacherDailyAttendance.find({
+    teacherId,
+    isDeleted: false,
+    date: { $gte: rangeStart, $lte: rangeEnd },
+  })
+    .select("date status")
+    .lean();
+
+  const days = records.map((record) => ({
+    date: toLocalDateKey(record.date),
+    status: record.status,
+  }));
+
+  return {
+    teacherId: teacher._id,
+    teacherName: teacher.fullName,
+    year: year || null,
+    month: month || null,
+    from: toLocalDateKey(rangeStart),
+    to: toLocalDateKey(rangeEnd),
+    days,
+  };
+};
+
 export const markTeacherAttendance = async (payload, actorId) => {
   const { teacherId, status, date, remarks } = payload;
 
@@ -116,13 +182,14 @@ export const markTeacherAttendance = async (payload, actorId) => {
   const day = startOfDay(date);
 
   const record = await TeacherDailyAttendance.findOneAndUpdate(
-    { teacherId, date: day, isDeleted: false },
+    { teacherId, date: day },
     {
       $set: {
         status,
         remarks: remarks?.trim() || "",
         markedBy: actorId,
         updatedBy: actorId.toString(),
+        isDeleted: false,
       },
       $setOnInsert: {
         teacherId,
@@ -136,4 +203,25 @@ export const markTeacherAttendance = async (payload, actorId) => {
   const stats = await getTeacherAttendanceStats(day);
 
   return { record, stats };
+};
+
+/** Demo/test only — hard-deletes attendance marks (avoids unique-index conflicts from soft deletes). */
+export const resetDemoTeacherAttendance = async (dateInput, actorId, options = {}) => {
+  const { all = false } = options;
+
+  if (all) {
+    const result = await TeacherDailyAttendance.deleteMany({});
+    const stats = await getTeacherAttendanceStats(startOfDay());
+    return { deletedCount: result.deletedCount, date: startOfDay(), stats, scope: "all" };
+  }
+
+  const dayStart = startOfDay(dateInput);
+  const dayEnd = endOfDay(dateInput);
+
+  const result = await TeacherDailyAttendance.deleteMany({
+    date: { $gte: dayStart, $lte: dayEnd },
+  });
+
+  const stats = await getTeacherAttendanceStats(dayStart);
+  return { deletedCount: result.deletedCount, date: dayStart, stats, scope: "day" };
 };

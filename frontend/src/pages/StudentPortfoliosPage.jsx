@@ -196,8 +196,8 @@ export default function StudentPortfoliosPage() {
       </div>
 
       {selected ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-[2px]">
-          <div className="ref-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-0">
+        <div className="modal-backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-[2px]">
+          <div className="modal-panel-enter ref-card max-h-[90vh] w-full max-w-2xl overflow-y-auto p-0">
             <div className="border-b border-slate-100 px-6 py-5">
               <div className="flex items-center gap-4">
                 <StudentAvatar student={selected} />
