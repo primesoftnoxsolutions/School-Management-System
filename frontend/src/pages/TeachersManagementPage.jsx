@@ -1,46 +1,31 @@
 import { useEffect, useState } from "react";
 import api from "../services/api/client";
 import FormModal from "../components/ui/FormModal";
-import { CLASS_OPTIONS, SECTION_OPTIONS, SUBJECT_OPTIONS, getClassSectionOptions } from "../constants/classes";
+import CreateTeacherWizard, {
+  assignedClassesToFormState,
+  buildAssignmentsFromSelection,
+  initialCreateTeacherForm,
+  isNoAssignClass,
+} from "../components/teachers/CreateTeacherWizard";
+import TeacherAttendanceModal from "../components/teachers/TeacherAttendanceModal";
+import TeacherRemoveModal from "../components/teachers/TeacherRemoveModal";
+import TeacherAssignmentHistoryModal from "../components/teachers/TeacherAssignmentHistoryModal";
+import TeacherLoginDetailsModal from "../components/teachers/TeacherLoginDetailsModal";
+import TeacherActivityMonitor from "../components/teachers/TeacherActivityMonitor";
+import TablePagination from "../components/ui/TablePagination";
+import { CLASS_OPTIONS, SECTION_OPTIONS, SUBJECT_OPTIONS } from "../constants/classes";
 
-const emptyAssignment = { className: "", section: "A", subject: "" };
-
-const initialForm = {
-  fullName: "",
-  email: "",
-  password: "",
-  assignments: [{ ...emptyAssignment }],
-};
-
-const initialEditForm = {
-  teacherId: "",
-  fullName: "",
-  email: "",
-  password: "",
-  isActive: true,
-  assignments: [{ ...emptyAssignment }],
-};
+function toAttendanceDateValue(date = new Date()) {
+  const d = new Date(date);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60 * 1000);
+  return local.toISOString().slice(0, 10);
+}
 
 function IconUsers() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
       <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m8-4a4 4 0 11-8 0 4 4 0 018 0zm-4 0a4 4 0 11-8 0 4 4 0 018 0z" />
-    </svg>
-  );
-}
-
-function IconMail() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  );
-}
-
-function IconLock() {
-  return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
     </svg>
   );
 }
@@ -61,18 +46,43 @@ function IconFilter() {
   );
 }
 
-function IconDownload() {
+function IconHistory() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3M3.05 11a9 9 0 1 0 .5-3.5M3 4v4h4" />
     </svg>
   );
 }
 
-function IconActivity() {
+function IconEye() {
   return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  );
+}
+
+function IconUserPlus() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" />
+    </svg>
+  );
+}
+
+function IconClipboardCheck() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconUserMinus() {
+  return (
+    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 11h-6" />
     </svg>
   );
 }
@@ -103,35 +113,89 @@ function TeacherAvatar({ name }) {
   );
 }
 
-function StatusPill({ active }) {
+function StatusPill({ active, dark = false }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-        active ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+        active
+          ? dark
+            ? "bg-[#4caf50]/15 text-[#4caf50]"
+            : "bg-emerald-50 text-emerald-700"
+          : dark
+            ? "bg-white/[0.06] text-[#9e9e9e]"
+            : "bg-slate-100 text-slate-600"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : dark ? "bg-[#9e9e9e]" : "bg-slate-400"}`} />
       {active ? "Active" : "Inactive"}
     </span>
   );
 }
 
-function ClassBadge({ assignedClasses = [] }) {
+function subjectSortIndex(subject) {
+  const idx = SUBJECT_OPTIONS.indexOf(subject || "Class Teacher");
+  return idx === -1 ? SUBJECT_OPTIONS.length : idx;
+}
+
+function groupAssignedClasses(assignedClasses = []) {
+  const groups = new Map();
+
+  assignedClasses.forEach((item) => {
+    const section = item.section || "A";
+    const key = `${item.className}|${section}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        className: item.className,
+        section,
+        subjects: new Set(),
+      });
+    }
+    groups.get(key).subjects.add(item.subject || "Class Teacher");
+  });
+
+  return [...groups.values()]
+    .sort((a, b) => {
+      const classDiff = CLASS_OPTIONS.indexOf(a.className) - CLASS_OPTIONS.indexOf(b.className);
+      if (classDiff !== 0) return classDiff;
+      return SECTION_OPTIONS.indexOf(a.section) - SECTION_OPTIONS.indexOf(b.section);
+    })
+    .map((group) => {
+      const classLabel = `${group.className} ${group.section}`;
+      const subjects = [...group.subjects].sort((a, b) => subjectSortIndex(a) - subjectSortIndex(b));
+      return {
+        key: `${group.className}|${group.section}`,
+        classLabel,
+        subjects,
+        display: `${classLabel}, ${subjects.join(", ")}`,
+      };
+    });
+}
+
+function ClassBadge({ assignedClasses = [], dark = false }) {
   if (!assignedClasses.length) {
     return (
-      <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+      <span
+        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+          dark ? "bg-[#ff9800]/15 text-[#ff9800]" : "bg-amber-50 text-amber-700"
+        }`}
+      >
         Not assigned
       </span>
     );
   }
+
+  const grouped = groupAssignedClasses(assignedClasses);
+
   return (
     <div className="flex flex-wrap gap-1">
-      {assignedClasses.map((item) => (
+      {grouped.map((group) => (
         <span
-          key={`${item.className}-${item.section}-${item.subject}`}
-          className="inline-flex rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700"
+          key={group.key}
+          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+            dark ? "bg-[#7c4dff]/15 text-[#7c4dff]" : "bg-indigo-50 text-indigo-700"
+          }`}
         >
-          {item.className} {item.section || "A"} · {item.subject || "Class Teacher"}
+          {group.display}
         </span>
       ))}
     </div>
@@ -152,172 +216,140 @@ function ActivityStatusBadge({ status }) {
   );
 }
 
-function AssignmentFields({ assignments, onChange, classOptions }) {
-  const updateRow = (index, patch) => {
-    const next = assignments.map((row, i) => (i === index ? { ...row, ...patch } : row));
-    onChange(next);
-  };
-
-  const addRow = () => onChange([...assignments, { ...emptyAssignment }]);
-  const removeRow = (index) => {
-    if (assignments.length === 1) return;
-    onChange(assignments.filter((_, i) => i !== index));
-  };
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium text-slate-700">Class assignments *</p>
-      {assignments.map((row, index) => (
-        <div key={index} className="grid grid-cols-1 gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-4">
-          <select
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
-            value={row.className}
-            onChange={(e) => updateRow(index, { className: e.target.value })}
-            required
-          >
-            <option value="">Class *</option>
-            {classOptions.map((cls) => (
-              <option key={cls} value={cls}>{cls}</option>
-            ))}
-          </select>
-          <select
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
-            value={row.section}
-            onChange={(e) => updateRow(index, { section: e.target.value })}
-            required
-          >
-            {SECTION_OPTIONS.map((sec) => (
-              <option key={sec} value={sec}>Section {sec}</option>
-            ))}
-          </select>
-          <select
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm sm:col-span-2"
-            value={row.subject}
-            onChange={(e) => updateRow(index, { subject: e.target.value })}
-            required
-          >
-            <option value="">Subject *</option>
-            {SUBJECT_OPTIONS.map((sub) => (
-              <option key={sub} value={sub}>{sub}</option>
-            ))}
-          </select>
-          {assignments.length > 1 ? (
-            <button type="button" className="text-xs text-rose-600 sm:col-span-4" onClick={() => removeRow(index)}>
-              Remove assignment
-            </button>
-          ) : null}
-        </div>
-      ))}
-      <button type="button" className="text-sm font-medium text-indigo-600 hover:text-indigo-700" onClick={addRow}>
-        + Add another class
-      </button>
-    </div>
-  );
-}
-
-function InputWithIcon({ icon: Icon, className = "", ...props }) {
-  return (
-    <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-        <Icon />
-      </span>
-      <input
-        {...props}
-        className={`w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 ${className}`}
-      />
-    </div>
-  );
-}
-
-function exportTeachersCsv(teachers) {
-  const header = ["Name", "Email", "Assigned Class", "Status", "Created"];
-  const rows = teachers.map((t) => [
-    t.fullName,
-    t.email,
-    t.assignedClasses?.length
-      ? t.assignedClasses.map((c) => `${c.className} ${c.section || "A"} (${c.subject || "Class Teacher"})`).join("; ")
-      : "Not assigned",
-    t.isActive ? "Active" : "Inactive",
-    new Date(t.createdAt).toLocaleDateString(),
-  ]);
-  const csv = [header, ...rows].map((row) => row.map((c) => `"${c}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "teachers.csv";
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-export default function TeachersManagementPage() {
-  const [form, setForm] = useState(initialForm);
-  const [editForm, setEditForm] = useState(initialEditForm);
+export default function TeachersManagementPage({ dark = false, onToggleTheme }) {
+  const [createForm, setCreateForm] = useState({ ...initialCreateTeacherForm });
+  const [assignTeacherId, setAssignTeacherId] = useState(null);
   const [teachers, setTeachers] = useState([]);
-  const [classTeachers, setClassTeachers] = useState([]);
-  const [classOptions] = useState(CLASS_OPTIONS);
-  const [activityClassFilter, setActivityClassFilter] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingClassTeachers, setLoadingClassTeachers] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ totalPages: 1, total: 0, limit: 10 });
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [createModalTeacherName, setCreateModalTeacherName] = useState("");
+  const [createWizardKey, setCreateWizardKey] = useState(0);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showLoginDetailsModal, setShowLoginDetailsModal] = useState(false);
+  const [loginDetailsTeacher, setLoginDetailsTeacher] = useState(null);
+  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
+  const [attendanceDate, setAttendanceDate] = useState(() => toAttendanceDateValue());
+  const [attendanceResetting, setAttendanceResetting] = useState(false);
 
-  const activityFilterParts = activityClassFilter ? activityClassFilter.split("|") : [];
-  const activityClassName = activityFilterParts[0] || "";
-  const activitySection = activityFilterParts[1] || "";
-
-  const loadClassTeachers = async (classSectionValue) => {
-    if (!classSectionValue) {
-      setClassTeachers([]);
-      return;
-    }
-    const [className, section] = classSectionValue.split("|");
-    setLoadingClassTeachers(true);
-    try {
-      const res = await api.get("/teachers/by-class", { params: { className, section } });
-      setClassTeachers(res.data?.data || []);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to load teachers for class");
-      setClassTeachers([]);
-    } finally {
-      setLoadingClassTeachers(false);
-    }
-  };
-
-  const loadData = async () => {
+  const loadData = async (nextPage = page, nextSearch = search) => {
     setLoading(true);
     setError("");
     try {
-      const teachersRes = await api.get("/teachers", { params: { search, page: 1, limit: 20 } });
-      setTeachers(teachersRes.data?.data?.items || []);
+      const teachersRes = await api.get("/teachers", {
+        params: { search: nextSearch, page: nextPage, limit: pagination.limit },
+      });
+      const data = teachersRes.data?.data || {};
+      setTeachers(data.items || []);
+      setPagination({
+        total: data.total || 0,
+        totalPages: data.totalPages || 1,
+        limit: data.limit || 10,
+      });
+      setPage(data.page || nextPage);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load teachers data");
+      setTeachers([]);
+      setPagination({ totalPages: 1, total: 0, limit: 10 });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadData();
+    loadData(1, "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onCreateTeacher = async (event) => {
-    event.preventDefault();
+  const resetCreateForm = () => {
+    setCreateForm({ ...initialCreateTeacherForm });
+  };
+
+  const closeCreateModal = () => {
+    setShowCreateModal(false);
+    setAssignTeacherId(null);
+    setCreateModalTeacherName("");
+    setError("");
+    resetCreateForm();
+  };
+
+  const onSaveAssignments = async (teacherId, wizardForm) => {
     setSaving(true);
     setError("");
     setSuccess("");
     try {
-      await api.post("/teachers", form);
-      setForm({ ...initialForm, assignments: [{ ...emptyAssignment }] });
-      setSuccess("Teacher created successfully with assigned classes.");
+      const assignments = isNoAssignClass(wizardForm.className)
+        ? []
+        : buildAssignmentsFromSelection(
+            wizardForm.className,
+            wizardForm.sections,
+            wizardForm.sectionSubjects
+          );
+      await api.put(`/teachers/${teacherId}`, { assignments });
+      closeCreateModal();
+      setSuccess(
+        assignments.length
+          ? "Class assignments saved successfully."
+          : "Teacher marked as NO ASSIGN — all class assignments removed."
+      );
+      await loadData(page, search);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save class assignments");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onWizardSubmit = async (wizardForm) => {
+    if (assignTeacherId) {
+      await onSaveAssignments(assignTeacherId, wizardForm);
+      return;
+    }
+    await onCreateTeacher(wizardForm);
+  };
+
+  const onCreateTeacher = async (wizardForm) => {
+    setSaving(true);
+    setError("");
+    setSuccess("");
+    try {
+      const assignments = isNoAssignClass(wizardForm.className)
+        ? []
+        : buildAssignmentsFromSelection(
+            wizardForm.className,
+            wizardForm.sections,
+            wizardForm.sectionSubjects
+          );
+      const payload = {
+        fullName: wizardForm.fullName.trim(),
+        email: wizardForm.email.trim(),
+        password: wizardForm.password,
+        cnic: wizardForm.cnic,
+        address: wizardForm.address,
+        phoneNumber: wizardForm.phoneNumber,
+        designation: wizardForm.designation,
+        qualification: wizardForm.qualification,
+        expertise: wizardForm.expertise,
+        salary: wizardForm.salary,
+        allowPasswordReset: wizardForm.allowPasswordReset,
+        assignments,
+      };
+      await api.post("/teachers", payload);
+      resetCreateForm();
+      setSuccess(
+        assignments.length
+          ? "Teacher created successfully with assigned classes."
+          : "Teacher created successfully without class assignment."
+      );
       setShowCreateModal(false);
-      await loadData();
-      if (activityClassFilter) await loadClassTeachers(activityClassFilter);
+      await loadData(1, search);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create teacher");
     } finally {
@@ -325,92 +357,133 @@ export default function TeachersManagementPage() {
     }
   };
 
-  const openEditModal = (teacher) => {
-    const assignments = teacher.assignedClasses?.length
-      ? teacher.assignedClasses.map((row) => ({
-          className: row.className || "",
-          section: row.section || "A",
-          subject: row.subject || "",
-        }))
-      : [{ ...emptyAssignment }];
-    setEditForm({
-      teacherId: teacher._id,
-      fullName: teacher.fullName || "",
-      email: teacher.email || "",
-      password: "",
-      isActive: teacher.isActive !== false,
-      assignments,
-    });
-    setShowEditModal(true);
+  const openLoginDetailsModal = (teacher) => {
+    setLoginDetailsTeacher(teacher);
+    setShowLoginDetailsModal(true);
   };
 
-  const onUpdateTeacher = async (event) => {
-    event.preventDefault();
-    setSaving(true);
+  const closeLoginDetailsModal = () => {
+    setShowLoginDetailsModal(false);
+    setLoginDetailsTeacher(null);
+  };
+
+  const openAssignModal = (teacher) => {
+    setAssignTeacherId(teacher._id);
+    setCreateForm(assignedClassesToFormState(teacher.assignedClasses, teacher));
+    setCreateModalTeacherName(teacher.fullName || "");
+    setCreateWizardKey((key) => key + 1);
     setError("");
-    setSuccess("");
+    setShowCreateModal(true);
+  };
+
+  const handleAttendanceChange = () => {
+    setAttendanceRefreshKey((key) => key + 1);
+  };
+
+  const resetDemoAttendance = async () => {
+    const dateLabel = new Date(`${attendanceDate}T12:00:00`).toLocaleDateString("en-US", {
+      dateStyle: "medium",
+    });
+    if (!window.confirm(`Reset teacher attendance for ${dateLabel}? (Demo / test only)`)) return;
+    setAttendanceResetting(true);
+    setError("");
     try {
-      const payload = {
-        fullName: editForm.fullName,
-        email: editForm.email,
-        isActive: editForm.isActive,
-        assignments: editForm.assignments,
-      };
-      if (editForm.password.trim()) payload.password = editForm.password;
-      await api.put(`/teachers/${editForm.teacherId}`, payload);
-      setEditForm(initialEditForm);
-      setSuccess("Teacher updated successfully.");
-      setShowEditModal(false);
-      await loadData();
-      if (activityClassFilter) await loadClassTeachers(activityClassFilter);
+      await api.post("/teacher-attendance/reset-demo", { date: attendanceDate });
+      setAttendanceRefreshKey((key) => key + 1);
+      setSuccess(`Attendance reset for ${dateLabel}.`);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update teacher");
+      setError(err.response?.data?.message || "Failed to reset attendance");
     } finally {
-      setSaving(false);
+      setAttendanceResetting(false);
     }
   };
 
-  const onActivityClassFilterChange = async (value) => {
-    setActivityClassFilter(value);
-    await loadClassTeachers(value);
-  };
+  const cardClass = dark
+    ? "overflow-hidden rounded-2xl border border-white/[0.06] bg-[#161722]"
+    : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm";
 
-  const getTeacherSubject = (assignedClasses = []) => {
-    if (!assignedClasses.length) return "Not assigned";
-    if (assignedClasses.length === 1) return assignedClasses[0].subject || "Class Teacher";
-    return `${assignedClasses.length} assignments`;
-  };
+  const hasOpenModal =
+    showCreateModal || showAttendanceModal || showRemoveModal || showHistoryModal || showLoginDetailsModal;
 
   return (
     <section className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-200">
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${
+              dark ? "bg-[#7c4dff] shadow-[#7c4dff]/20" : "bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-200"
+            }`}
+          >
             <IconUsers />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Teachers Management</h2>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <h2 className={`text-2xl font-bold ${dark ? "text-white" : "text-slate-900"}`}>Teachers Management</h2>
+            <p className={`mt-0.5 text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
               Create teacher accounts, assign classes and monitor teacher activities.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => setShowCreateModal(true)} className="ref-btn-primary whitespace-nowrap">
-            + Create Teacher
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setAssignTeacherId(null);
+              resetCreateForm();
+              setCreateWizardKey((key) => key + 1);
+              setError("");
+              setShowCreateModal(true);
+            }}
+            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium text-white ${
+              dark ? "bg-[#7c4dff] hover:bg-[#6a3df0]" : "ref-btn-primary"
+            }`}
+          >
+            <IconUserPlus />
+            Create Teacher
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowAttendanceModal(true)}
+            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium ${
+              dark
+                ? "border-white/[0.06] bg-[#161722] text-white hover:bg-white/[0.04]"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <IconClipboardCheck />
+            Teacher Attendance
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowRemoveModal(true)}
+            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium ${
+              dark
+                ? "border-[#e91e63]/30 bg-[#e91e63]/10 text-[#e91e63] hover:bg-[#e91e63]/15"
+                : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+            }`}
+          >
+            <IconUserMinus />
+            Teacher Remove at School
           </button>
           <TeacherIllustration />
         </div>
       </div>
 
-      {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      {error && !hasOpenModal ? (
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            dark ? "border-[#e91e63]/30 bg-[#e91e63]/10 text-[#e91e63]" : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
           {error}
         </div>
       ) : null}
       {success ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div
+          className={`rounded-xl border px-4 py-3 text-sm ${
+            dark ? "border-[#4caf50]/30 bg-[#4caf50]/10 text-[#4caf50]" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
           {success}
         </div>
       ) : null}
@@ -418,114 +491,158 @@ export default function TeachersManagementPage() {
       {/* Search bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${dark ? "text-[#9e9e9e]" : "text-slate-400"}`}>
             <IconSearch />
           </span>
           <input
-            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm outline-none ${
+              dark
+                ? "border-white/[0.06] bg-[#161722] text-white placeholder:text-[#9e9e9e] focus:border-[#7c4dff]/40 focus:ring-2 focus:ring-[#7c4dff]/15"
+                : "border-slate-200 bg-white text-slate-700 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            }`}
             placeholder="Search teacher by name or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && loadData()}
+            onKeyDown={(e) => e.key === "Enter" && loadData(1, search)}
           />
         </div>
         <button
           type="button"
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium ${
+            dark
+              ? "border-white/[0.06] bg-[#161722] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
         >
           <IconFilter />
           Filter
         </button>
         <button
           type="button"
-          onClick={loadData}
-          className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-200 hover:from-indigo-600 hover:to-violet-700"
+          onClick={() => loadData(1, search)}
+          className={`inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-sm font-semibold text-white shadow-md ${
+            dark
+              ? "bg-[#7c4dff] shadow-[#7c4dff]/20 hover:bg-[#6a3df0]"
+              : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-200 hover:from-indigo-600 hover:to-violet-700"
+          }`}
         >
           Search
         </button>
       </div>
 
       {/* Teacher accounts table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+      <div className={cardClass}>
+        <div
+          className={`flex items-center justify-between border-b px-5 py-4 ${
+            dark ? "border-white/[0.06]" : "border-slate-100"
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                dark ? "bg-[#7c4dff]/15 text-[#7c4dff]" : "bg-indigo-50 text-indigo-600"
+              }`}
+            >
               <IconUsers />
             </span>
-            <h3 className="text-base font-semibold text-slate-800">Teacher Accounts</h3>
+            <h3 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-800"}`}>
+              Teacher Accounts{pagination.total ? ` (${pagination.total})` : ""}
+            </h3>
           </div>
-          <button
-            type="button"
-            onClick={() => exportTeachersCsv(teachers)}
-            disabled={!teachers.length}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-          >
-            <IconDownload />
-            Export
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowHistoryModal(true)}
+              title="Assignment history"
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                dark
+                  ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <IconHistory />
+              History
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+              <tr
+                className={`border-b text-left text-[11px] font-semibold uppercase tracking-wider ${
+                  dark ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e]" : "border-slate-100 bg-slate-50/80 text-slate-500"
+                }`}
+              >
                 <th className="px-5 py-3">Teacher Name</th>
-                <th className="px-5 py-3">Email Address</th>
                 <th className="px-5 py-3">Assigned Class</th>
                 <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Created On</th>
                 <th className="px-5 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-500">
+                  <td colSpan={4} className={`px-5 py-10 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                     Loading teachers...
                   </td>
                 </tr>
               ) : teachers.length ? (
                 teachers.map((teacher) => (
-                  <tr key={teacher._id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <tr
+                    key={teacher._id}
+                    className={dark ? "border-b border-white/[0.06] hover:bg-white/[0.03]" : "border-b border-slate-50 hover:bg-slate-50/50"}
+                  >
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <TeacherAvatar name={teacher.fullName} />
                         <div>
-                          <p className="font-semibold text-slate-800">{teacher.fullName}</p>
-                          <p className="text-xs text-slate-500">
-                            {getTeacherSubject(teacher.assignedClasses)}
+                          <p className={`font-semibold ${dark ? "text-white" : "text-slate-800"}`}>{teacher.fullName}</p>
+                          <p className={`text-xs whitespace-nowrap ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                            Created{" "}
+                            {new Date(teacher.createdAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-slate-600">{teacher.email}</td>
                     <td className="px-5 py-4">
-                      <ClassBadge assignedClasses={teacher.assignedClasses} />
+                      <ClassBadge assignedClasses={teacher.assignedClasses} dark={dark} />
                     </td>
                     <td className="px-5 py-4">
-                      <StatusPill active={teacher.isActive} />
-                    </td>
-                    <td className="px-5 py-4 text-slate-600">
-                      {new Date(teacher.createdAt).toLocaleDateString("en-US", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      <StatusPill active={teacher.isActive} dark={dark} />
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(teacher)}
-                        className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
-                      >
-                        Edit
-                      </button>
+                      <div className="inline-flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openLoginDetailsModal(teacher)}
+                          title="View login details"
+                          className={`inline-flex items-center rounded-lg p-1.5 ${
+                            dark ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                          }`}
+                        >
+                          <IconEye />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAssignModal(teacher)}
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+                            dark ? "text-[#7c4dff] hover:bg-white/[0.04]" : "text-indigo-600 hover:bg-indigo-50"
+                          }`}
+                        >
+                          Edit
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-5 py-10 text-center text-slate-500">
+                  <td colSpan={4} className={`px-5 py-10 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                     No teachers found. Create a teacher to enable their panel.
                   </td>
                 </tr>
@@ -533,125 +650,119 @@ export default function TeachersManagementPage() {
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          page={page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          dark={dark}
+          onPrev={() => loadData(page - 1, search)}
+          onNext={() => loadData(page + 1, search)}
+        />
       </div>
 
       {/* Activity monitor */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <IconActivity />
-            </span>
-            <h3 className="text-base font-semibold text-slate-800">Teacher Activity Monitor</h3>
-          </div>
-          <select
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 sm:min-w-[200px]"
-            value={activityClassFilter}
-            onChange={(e) => onActivityClassFilterChange(e.target.value)}
-          >
-            <option value="">Select class to view teachers</option>
-            {getClassSectionOptions().map((item) => (
-              <option key={item.value} value={item.value}>{item.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {activityClassFilter ? (
-          <div className="overflow-x-auto">
-            <div className="px-5 py-3 text-sm font-medium text-slate-700">
-              Teachers handling {activityClassName} {activitySection}
-            </div>
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                  <th className="px-5 py-3">Teacher</th>
-                  <th className="px-5 py-3">Email</th>
-                  <th className="px-5 py-3">Subject</th>
-                  <th className="px-5 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loadingClassTeachers ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-8 text-center text-slate-500">
-                      Loading teachers...
-                    </td>
-                  </tr>
-                ) : classTeachers.length ? (
-                  classTeachers.map((item) => (
-                    <tr key={`${item.teacherId}-${item.subject}`} className="border-b border-slate-50 hover:bg-slate-50/50">
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <TeacherAvatar name={item.fullName} />
-                          <span className="font-medium text-slate-800">{item.fullName}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-slate-600">{item.email}</td>
-                      <td className="px-5 py-4 text-slate-600">{item.subject}</td>
-                      <td className="px-5 py-4">
-                        <StatusPill active={item.isActive} />
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-8 text-center text-slate-500">
-                      No teachers assigned to this class yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="px-5 py-12 text-center text-sm text-slate-500">
-            Select a class from the top right to view teachers handling that class.
-          </div>
-        )}
+      <div className={cardClass}>
+        <TeacherActivityMonitor
+          dark={dark}
+          onToggleTheme={onToggleTheme}
+          refreshKey={attendanceRefreshKey}
+        />
       </div>
 
-      <FormModal open={showCreateModal} title="Create Teacher" onClose={() => setShowCreateModal(false)} wide>
-        <form onSubmit={onCreateTeacher} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <InputWithIcon icon={() => (<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>)} placeholder="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
-            <InputWithIcon icon={IconMail} type="email" placeholder="Email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-            <InputWithIcon icon={IconLock} type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required className="sm:col-span-2" />
-          </div>
-          <AssignmentFields
-            assignments={form.assignments}
-            onChange={(assignments) => setForm({ ...form, assignments })}
-            classOptions={classOptions}
+      <FormModal
+        open={showCreateModal}
+        title={assignTeacherId ? "Class Assignments" : "Create Teacher"}
+        subtitle={createModalTeacherName}
+        onClose={closeCreateModal}
+        wide
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+      >
+        {showCreateModal ? (
+          <CreateTeacherWizard
+            key={createWizardKey}
+            form={createForm}
+            setForm={setCreateForm}
+            onSubmit={onWizardSubmit}
+            saving={saving}
+            onCancel={closeCreateModal}
+            onTitleChange={setCreateModalTeacherName}
+            dark={dark}
+            mode={assignTeacherId ? "assign" : "create"}
+            submitError={error}
+            onDismissError={() => setError("")}
           />
-          <button type="submit" disabled={saving} className="ref-btn-primary w-full">
-            {saving ? "Creating..." : "Create Teacher"}
-          </button>
-        </form>
+        ) : null}
       </FormModal>
 
-      <FormModal open={showEditModal} title="Edit Teacher" onClose={() => setShowEditModal(false)} wide>
-        <form onSubmit={onUpdateTeacher} className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <InputWithIcon icon={() => (<svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>)} placeholder="Full name" value={editForm.fullName} onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })} required />
-            <InputWithIcon icon={IconMail} type="email" placeholder="Email address" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} required />
-            <InputWithIcon icon={IconLock} type="password" placeholder="New password (optional)" value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })} className="sm:col-span-2" />
-            <select
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm sm:col-span-2"
-              value={editForm.isActive ? "ACTIVE" : "INACTIVE"}
-              onChange={(e) => setEditForm({ ...editForm, isActive: e.target.value === "ACTIVE" })}
-            >
-              <option value="ACTIVE">Active</option>
-              <option value="INACTIVE">Inactive</option>
-            </select>
-          </div>
-          <AssignmentFields
-            assignments={editForm.assignments}
-            onChange={(assignments) => setEditForm({ ...editForm, assignments })}
-            classOptions={classOptions}
+      <FormModal
+        open={showAttendanceModal}
+        title="Teacher Attendance"
+        onClose={() => {
+          setShowAttendanceModal(false);
+          setError("");
+        }}
+        extraWide
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+        onDemoReset={resetDemoAttendance}
+        demoResetting={attendanceResetting}
+        error={showAttendanceModal ? error : ""}
+      >
+        {showAttendanceModal ? (
+          <TeacherAttendanceModal
+            dark={dark}
+            date={attendanceDate}
+            onDateChange={setAttendanceDate}
+            onAttendanceChange={handleAttendanceChange}
+            refreshKey={attendanceRefreshKey}
           />
-          <button type="submit" disabled={saving} className="ref-btn-primary w-full">
-            {saving ? "Saving..." : "Update Teacher"}
-          </button>
-        </form>
+        ) : null}
+      </FormModal>
+
+      <FormModal
+        open={showHistoryModal}
+        title="Teacher Assignment History"
+        subtitle="Class / Section / Subject"
+        onClose={() => setShowHistoryModal(false)}
+        extraWide
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+      >
+        {showHistoryModal ? <TeacherAssignmentHistoryModal dark={dark} /> : null}
+      </FormModal>
+
+      <FormModal
+        open={showLoginDetailsModal}
+        title="Teacher Login Details"
+        subtitle={loginDetailsTeacher?.fullName || ""}
+        onClose={closeLoginDetailsModal}
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+      >
+        {showLoginDetailsModal && loginDetailsTeacher ? (
+          <TeacherLoginDetailsModal teacher={loginDetailsTeacher} dark={dark} />
+        ) : null}
+      </FormModal>
+
+      <FormModal
+        open={showRemoveModal}
+        title="Teacher Remove at School"
+        onClose={() => setShowRemoveModal(false)}
+        extraWide
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+      >
+        {showRemoveModal ? (
+          <TeacherRemoveModal
+            dark={dark}
+            onRemoved={(name) => {
+              setSuccess(`${name} removed from school successfully.`);
+              loadData(page, search);
+            }}
+          />
+        ) : null}
       </FormModal>
     </section>
   );

@@ -4,9 +4,9 @@ export default function FeeReceiptSlip({ slip, onClose }) {
   const printSlip = () => window.print();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm print:bg-white print:p-0">
+    <div className="modal-backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm print:bg-white print:p-0">
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 print:max-w-none print:shadow-none print:ring-0"
+        className="modal-panel-enter w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200 print:max-w-none print:animate-none print:shadow-none print:ring-0"
         id="fee-receipt-slip"
       >
         <div className="relative bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 px-6 py-8 text-white print:bg-blue-700">

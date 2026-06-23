@@ -1,4 +1,4 @@
-export default function PageHeader({ title, subtitle, actionLabel, onAction, extra }) {
+export default function PageHeader({ title, subtitle, actionLabel, onAction, extra, afterAction }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
@@ -12,6 +12,7 @@ export default function PageHeader({ title, subtitle, actionLabel, onAction, ext
             + {actionLabel}
           </button>
         ) : null}
+        {afterAction}
       </div>
     </div>
   );

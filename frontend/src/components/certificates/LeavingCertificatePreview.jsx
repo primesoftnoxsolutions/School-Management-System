@@ -115,8 +115,8 @@ export default function LeavingCertificatePreview({ cert, onClose }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 px-3 py-6 backdrop-blur-sm">
-      <div className="flex max-h-[96vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="modal-backdrop-enter fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 px-3 py-6 backdrop-blur-sm">
+      <div className="modal-panel-enter flex max-h-[96vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {/* Screen preview — Tailwind styled */}
           <div className="relative mx-auto max-w-3xl border-[3px] border-double border-[#1e3a5f] bg-[#fffdf8] p-1.5 shadow-inner">
