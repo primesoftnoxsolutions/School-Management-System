@@ -1,6 +1,8 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../services/api/client";
 
+const SESSION_STORAGE_KEY = "hasAuthSession";
+
 const initialState = {
   user: null,
   loading: false,
@@ -50,9 +52,9 @@ const authSlice = createSlice({
   reducers: {
     logout(state) {
       state.user = null;
-      state.accessToken = null;
       state.justLoggedIn = false;
-      localStorage.removeItem("accessToken");
+      state.sessionChecked = true;
+      localStorage.removeItem(SESSION_STORAGE_KEY);
     },
     clearJustLoggedIn(state) {
       state.justLoggedIn = false;
@@ -67,9 +69,9 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
         state.justLoggedIn = true;
-        localStorage.setItem("accessToken", action.payload.accessToken);
+        state.sessionChecked = true;
+        localStorage.setItem(SESSION_STORAGE_KEY, "true");
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -82,15 +84,20 @@ const authSlice = createSlice({
         state.loading = false;
         state.sessionChecked = true;
         state.user = action.payload;
+        localStorage.setItem(SESSION_STORAGE_KEY, "true");
       })
       .addCase(fetchMe.rejected, (state) => {
         state.loading = false;
         state.sessionChecked = true;
         state.user = null;
+        localStorage.removeItem(SESSION_STORAGE_KEY);
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
         state.error = null;
+        state.justLoggedIn = false;
+        state.sessionChecked = true;
+        localStorage.removeItem(SESSION_STORAGE_KEY);
       });
   },
 });

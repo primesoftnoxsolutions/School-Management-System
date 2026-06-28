@@ -1,231 +1,621 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api/client";
 
-const emptyForm = {
-  title: "",
-  reportType: "GENERAL",
-  summary: "",
-  periodFrom: "",
-  periodTo: "",
+const today = () => new Date().toISOString().slice(0, 10);
+
+const REPORT_TYPES = [
+  { value: "STUDENT_ATTENDANCE", label: "Student Attendance Report" },
+  { value: "TEACHER_ATTENDANCE", label: "Teacher Attendance Report" },
+  { value: "CLASS_RESULT", label: "Teacher Class Wise Result Report" },
+];
+
+const DEFAULT_SUBJECTS = ["English", "Urdu", "Maths", "Physics", "Chemistry", "Biology", "Isl. Studies", "Pak. Studies", "Comp. Science"];
+
+const formatDate = (date) => {
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 };
 
-export default function TeacherReportsPage() {
-  const [form, setForm] = useState(emptyForm);
-  const [editId, setEditId] = useState(null);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
+const getStudentName = (student) => `${student.firstName || ""} ${student.lastName || ""}`.trim() || "-";
 
-  const load = async (nextPage = page, nextSearch = search) => {
-    setLoading(true);
-    setError("");
-    try {
-      const { data } = await api.get("/teacher-panel/reports", {
-        params: { page: nextPage, limit: 10, search: nextSearch },
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.08em] text-slate-500">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ReportShell({ title, children, footer, onPrint }) {
+  return (
+    <div id="teacher-selected-report" className="overflow-hidden rounded-2xl border border-blue-900 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+      <div className="bg-blue-950 px-5 py-4 text-center text-white">
+        <div className="flex justify-end print:hidden">
+          <button
+            type="button"
+            onClick={onPrint}
+            className="rounded-lg bg-white px-4 py-2 text-xs font-black uppercase text-blue-950"
+          >
+            Print Report
+          </button>
+        </div>
+        <p className="text-3xl font-black uppercase tracking-[0.12em]">Insaf Grammar School</p>
+        <div className="mx-auto mt-2 max-w-2xl rounded-lg border border-white/70 px-4 py-1 text-lg font-extrabold uppercase tracking-[0.08em]">
+          {title}
+        </div>
+      </div>
+      <div className="p-5">{children}</div>
+      {footer ? <div className="border-t border-blue-900 px-5 py-4">{footer}</div> : null}
+    </div>
+  );
+}
+
+function SummaryPill({ label, value, tone = "blue" }) {
+  const tones = {
+    blue: "bg-blue-50 text-blue-700",
+    green: "bg-emerald-50 text-emerald-700",
+    rose: "bg-rose-50 text-rose-700",
+    amber: "bg-amber-50 text-amber-700",
+    violet: "bg-violet-50 text-violet-700",
+  };
+
+  return (
+    <div className={`rounded-2xl px-4 py-3 ${tones[tone] || tones.blue}`}>
+      <p className="text-xs font-bold uppercase tracking-[0.08em] opacity-75">{label}</p>
+      <p className="mt-1 text-2xl font-black">{value}</p>
+    </div>
+  );
+}
+
+export default function TeacherReportsPage() {
+  const [teacherName, setTeacherName] = useState("");
+  const [classOptions, setClassOptions] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [students, setStudents] = useState([]);
+  const [reportType, setReportType] = useState("STUDENT_ATTENDANCE");
+  const [periodFrom, setPeriodFrom] = useState(today());
+  const [periodTo, setPeriodTo] = useState(today());
+  const [academicSession, setAcademicSession] = useState("2024-2025");
+  const [examination, setExamination] = useState("Annual Examination");
+  const [reportDate, setReportDate] = useState(today());
+  const [subjects] = useState(DEFAULT_SUBJECTS);
+  const [marksByStudent, setMarksByStudent] = useState({});
+  const [studentAttendanceRows, setStudentAttendanceRows] = useState([]);
+  const [teacherAttendance, setTeacherAttendance] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const classSectionOptions = useMemo(() => {
+    const seen = new Set();
+    return classOptions.filter((option) => {
+      const key = `${option.className}__${option.section || "A"}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [classOptions]);
+
+  const selectedClass = useMemo(
+    () => classSectionOptions.find((option) => option._id === selectedClassId) || null,
+    [classSectionOptions, selectedClassId]
+  );
+
+  const resultRows = useMemo(
+    () =>
+      students.map((student, index) => {
+        const marks = marksByStudent[student._id] || {};
+        const subjectMarks = subjects.map((subject) => toNumber(marks[subject]));
+        const total = subjectMarks.reduce((sum, mark) => sum + mark, 0);
+        const maxTotal = subjects.length * 100;
+        const percentage = maxTotal ? (total / maxTotal) * 100 : 0;
+        return {
+          student,
+          rollNo: student.rollNumber || student.admissionNo || index + 1,
+          subjectMarks,
+          total,
+          percentage,
+        };
+      }),
+    [marksByStudent, students, subjects]
+  );
+
+  const overallPercentage = useMemo(() => {
+    if (!resultRows.length) return 0;
+    const total = resultRows.reduce((sum, row) => sum + row.percentage, 0);
+    return total / resultRows.length;
+  }, [resultRows]);
+
+  const loadStudents = async (classOption) => {
+    if (!classOption) {
+      setStudents([]);
+      setMarksByStudent({});
+      return;
+    }
+
+    const { data } = await api.get("/teacher-panel/students", {
+      params: { className: classOption.className, section: classOption.section || "A" },
+    });
+    const nextStudents = data.data || [];
+    setStudents(nextStudents);
+    setMarksByStudent((current) => {
+      const next = {};
+      nextStudents.forEach((student) => {
+        next[student._id] = current[student._id] || {};
       });
-      setItems(data.data.items || []);
-      setPagination({ totalPages: data.data.totalPages || 1, total: data.data.total || 0 });
-      setPage(data.data.page || nextPage);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const [panelRes, classRes] = await Promise.all([
+          api.get("/teachers/my-panel"),
+          api.get("/teacher-panel/class-options"),
+        ]);
+
+        setTeacherName(panelRes.data?.data?.teacher?.fullName || "");
+        const classes = classRes.data?.data || [];
+        setClassOptions(classes);
+        if (classes.length) {
+          setSelectedClassId(classes[0]._id);
+          await loadStudents(classes[0]);
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to load report data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitial();
+  }, []);
+
+  const onClassChange = async (classId) => {
+    setSelectedClassId(classId);
+    setStudentAttendanceRows([]);
+    const classOption = classSectionOptions.find((option) => option._id === classId);
+    try {
+      setLoading(true);
+      setError("");
+      await loadStudents(classOption);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load reports");
-      setItems([]);
+      setError(err.response?.data?.message || "Failed to load students for this class");
+      setStudents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    load(1, "");
-  }, []);
+  const generateStudentAttendance = async () => {
+    if (!selectedClass || !periodFrom || !periodTo) {
+      setError("Select class, from date and to date first.");
+      return;
+    }
 
-  const resetForm = () => {
-    setForm(emptyForm);
-    setEditId(null);
-  };
-
-  const onSubmit = async (event) => {
-    event.preventDefault();
-    setSaving(true);
+    setLoading(true);
     setError("");
     try {
-      if (editId) {
-        await api.put(`/teacher-panel/reports/${editId}`, form);
-      } else {
-        await api.post("/teacher-panel/reports", form);
-      }
-      resetForm();
-      await load(1, search);
+      const { data } = await api.get("/teacher-panel/attendance/summary", {
+        params: {
+          className: selectedClass.className,
+          section: selectedClass.section || "A",
+          fromDate: periodFrom,
+          toDate: periodTo,
+        },
+      });
+      setStudentAttendanceRows(data.data || []);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save report");
+      setError(err.response?.data?.message || "Failed to generate student attendance report");
+      setStudentAttendanceRows([]);
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  const onEdit = (item) => {
-    setEditId(item._id);
-    setForm({
-      title: item.title,
-      reportType: item.reportType || "GENERAL",
-      summary: item.summary,
-      periodFrom: item.periodFrom ? new Date(item.periodFrom).toISOString().slice(0, 10) : "",
-      periodTo: item.periodTo ? new Date(item.periodTo).toISOString().slice(0, 10) : "",
-    });
-  };
+  const generateTeacherAttendance = async () => {
+    if (!periodFrom || !periodTo) {
+      setError("Select from date and to date first.");
+      return;
+    }
 
-  const onDelete = async (id) => {
-    if (!window.confirm("Delete this report?")) return;
+    setLoading(true);
+    setError("");
     try {
-      await api.delete(`/teacher-panel/reports/${id}`);
-      if (editId === id) resetForm();
-      await load(page, search);
+      const { data } = await api.get("/teacher-panel/my-attendance/summary", {
+        params: { fromDate: periodFrom, toDate: periodTo },
+      });
+      setTeacherAttendance(data.data || null);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete report");
+      setError(err.response?.data?.message || "Failed to generate teacher attendance report");
+      setTeacherAttendance(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const downloadReport = (item) => {
-    const content = [
-      `Title: ${item.title}`,
-      `Type: ${item.reportType}`,
-      `Period: ${item.periodFrom ? new Date(item.periodFrom).toLocaleDateString() : "-"} to ${item.periodTo ? new Date(item.periodTo).toLocaleDateString() : "-"}`,
-      "",
-      item.summary,
-    ].join("\n");
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${item.title.replace(/\s+/g, "_")}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const generateReport = () => {
+    if (reportType === "STUDENT_ATTENDANCE") {
+      generateStudentAttendance();
+      return;
+    }
+    if (reportType === "TEACHER_ATTENDANCE") {
+      generateTeacherAttendance();
+      return;
+    }
+    if (!selectedClass) {
+      setError("Select a class first.");
+      return;
+    }
+    setError("");
   };
 
-  return (
-    <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Reports</h2>
-        <p className="text-sm text-slate-500">Create, edit and download your teaching reports.</p>
+  const updateMark = (studentId, subject, value) => {
+    const clamped = Math.max(0, Math.min(100, toNumber(value)));
+    setMarksByStudent((current) => ({
+      ...current,
+      [studentId]: {
+        ...(current[studentId] || {}),
+        [subject]: value === "" ? "" : clamped,
+      },
+    }));
+  };
+
+  const printReport = () => {
+    const report = document.getElementById("teacher-selected-report");
+    if (!report) return;
+    const printWindow = window.open("", "_blank", "width=1100,height=800");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>${REPORT_TYPES.find((type) => type.value === reportType)?.label || "Report"}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="bg-white p-4">${report.outerHTML}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 500);
+  };
+
+  const selectedClassLabel = selectedClass ? `${selectedClass.className} - ${selectedClass.section || "A"}` : "-";
+  const selectedSubject = selectedClass?.subject || "-";
+
+  const renderStudentAttendanceReport = () => {
+    const totals = studentAttendanceRows.reduce(
+      (acc, row) => {
+        acc.present += Number(row.present || 0);
+        acc.absent += Number(row.absent || 0);
+        acc.late += Number(row.late || 0);
+        acc.leave += Number(row.leave || 0);
+        return acc;
+      },
+      { present: 0, absent: 0, late: 0, leave: 0 }
+    );
+
+    return (
+      <ReportShell title="Student Attendance Report" onPrint={printReport}>
+        <div className="mb-5 grid gap-3 text-sm font-bold text-slate-900 md:grid-cols-2">
+          <p>Teacher Name: <span className="text-blue-800">{teacherName || "-"}</span></p>
+          <p>Class: <span className="text-blue-800">{selectedClassLabel}</span></p>
+          <p>Subject Taught: <span className="text-blue-800">{selectedSubject}</span></p>
+          <p>Range: <span className="text-blue-800">{formatDate(periodFrom)} - {formatDate(periodTo)}</span></p>
+        </div>
+
+        <div className="mb-5 grid gap-3 sm:grid-cols-4">
+          <SummaryPill label="Present" value={totals.present} tone="green" />
+          <SummaryPill label="Absent" value={totals.absent} tone="rose" />
+          <SummaryPill label="Late" value={totals.late} tone="amber" />
+          <SummaryPill label="Leave" value={totals.leave} tone="violet" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
+            <thead className="bg-blue-950 text-white">
+              <tr>
+                <th className="border border-blue-800 px-3 py-2 text-left">Roll No#</th>
+                <th className="border border-blue-800 px-3 py-2 text-left">Date</th>
+                <th className="border border-blue-800 px-3 py-2 text-left">Student Name</th>
+                <th className="border border-blue-800 px-3 py-2">Present</th>
+                <th className="border border-blue-800 px-3 py-2">Absent</th>
+                <th className="border border-blue-800 px-3 py-2">Late</th>
+                <th className="border border-blue-800 px-3 py-2">Leave</th>
+              </tr>
+            </thead>
+            <tbody>
+              {studentAttendanceRows.length ? (
+                studentAttendanceRows.map((row) => (
+                  <tr key={row.studentId}>
+                    <td className="border border-blue-200 px-3 py-2 font-bold">{row.rollNo || "-"}</td>
+                    <td className="border border-blue-200 px-3 py-2 font-bold">{formatDate(periodFrom)} - {formatDate(periodTo)}</td>
+                    <td className="border border-blue-200 px-3 py-2 font-bold">{row.name || "-"}</td>
+                    <td className="border border-blue-200 px-3 py-2 text-center">{row.present}</td>
+                    <td className="border border-blue-200 px-3 py-2 text-center">{row.absent}</td>
+                    <td className="border border-blue-200 px-3 py-2 text-center">{row.late}</td>
+                    <td className="border border-blue-200 px-3 py-2 text-center">{row.leave}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="border border-blue-200 px-3 py-8 text-center text-slate-500">
+                    Generate the report to load attendance rows.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </ReportShell>
+    );
+  };
+
+  const renderTeacherAttendanceReport = () => {
+    const totals = teacherAttendance?.totals || { present: 0, absent: 0, late: 0, leave: 0, marked: 0 };
+
+    return (
+      <ReportShell title="Teacher Attendance Report" onPrint={printReport}>
+        <div className="mb-5 grid gap-3 text-sm font-bold text-slate-900 md:grid-cols-2">
+          <p>Teacher Name: <span className="text-blue-800">{teacherName || "-"}</span></p>
+          <p>Range: <span className="text-blue-800">{formatDate(periodFrom)} - {formatDate(periodTo)}</span></p>
+        </div>
+
+        <div className="mb-5 grid gap-3 sm:grid-cols-5">
+          <SummaryPill label="Marked" value={totals.marked} />
+          <SummaryPill label="Present" value={totals.present} tone="green" />
+          <SummaryPill label="Absent" value={totals.absent} tone="rose" />
+          <SummaryPill label="Late" value={totals.late} tone="amber" />
+          <SummaryPill label="Leave" value={totals.leave} tone="violet" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] border-collapse text-sm">
+            <thead className="bg-blue-950 text-white">
+              <tr>
+                <th className="border border-blue-800 px-3 py-2 text-left">Date</th>
+                <th className="border border-blue-800 px-3 py-2 text-left">Status</th>
+                <th className="border border-blue-800 px-3 py-2 text-left">Remarks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teacherAttendance?.items?.length ? (
+                teacherAttendance.items.map((item) => (
+                  <tr key={`${item.date}-${item.status}`}>
+                    <td className="border border-blue-200 px-3 py-2 font-bold">{formatDate(item.date)}</td>
+                    <td className="border border-blue-200 px-3 py-2">{item.status}</td>
+                    <td className="border border-blue-200 px-3 py-2">{item.remarks || "-"}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="border border-blue-200 px-3 py-8 text-center text-slate-500">
+                    Generate the report to load teacher attendance.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </ReportShell>
+    );
+  };
+
+  const renderClassResultReport = () => (
+    <ReportShell
+      title="Teacher Class Wise Result Report"
+      onPrint={printReport}
+      footer={
+        <div className="grid grid-cols-2 gap-8 text-center text-sm font-black uppercase text-blue-950">
+          <div>
+            <div className="mx-auto mb-2 h-px w-64 bg-blue-950" />
+            Signature of Teacher
+          </div>
+          <div>
+            <div className="mx-auto mb-2 h-px w-64 bg-blue-950" />
+            Signature of Principal
+          </div>
+        </div>
+      }
+    >
+      <div className="mb-4 grid gap-x-10 gap-y-2 text-base font-black text-slate-950 md:grid-cols-2">
+        <div className="grid grid-cols-[150px_16px_minmax(0,1fr)] border-b border-blue-900 pb-1">
+          <span className="uppercase text-blue-950">Teacher Name</span><span>:</span><span>{teacherName || "-"}</span>
+        </div>
+        <div className="grid grid-cols-[170px_16px_minmax(0,1fr)] border-b border-blue-900 pb-1">
+          <span className="uppercase text-blue-950">Academic Session</span><span>:</span><span>{academicSession || "-"}</span>
+        </div>
+        <div className="grid grid-cols-[150px_16px_minmax(0,1fr)] border-b border-blue-900 pb-1">
+          <span className="uppercase text-blue-950">Class</span><span>:</span><span>{selectedClassLabel}</span>
+        </div>
+        <div className="grid grid-cols-[170px_16px_minmax(0,1fr)] border-b border-blue-900 pb-1">
+          <span className="uppercase text-blue-950">Examination</span><span>:</span><span>{examination || "-"}</span>
+        </div>
+        <div className="grid grid-cols-[150px_16px_minmax(0,1fr)] border-b border-blue-900 pb-1">
+          <span className="uppercase text-blue-950">Subject Taught</span><span>:</span><span>{selectedSubject}</span>
+        </div>
+        <div className="grid grid-cols-[170px_16px_minmax(0,1fr)] border-b border-blue-900 pb-1">
+          <span className="uppercase text-blue-950">Date</span><span>:</span><span>{formatDate(reportDate)}</span>
+        </div>
       </div>
 
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-
-      <form onSubmit={onSubmit} className="ref-card grid grid-cols-1 gap-3 p-5 md:grid-cols-2">
-        <input
-          className="ref-input md:col-span-2"
-          placeholder="Report title"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          required
-        />
-        <select
-          className="ref-input"
-          value={form.reportType}
-          onChange={(e) => setForm({ ...form, reportType: e.target.value })}
-        >
-          <option value="GENERAL">General</option>
-          <option value="ATTENDANCE">Attendance</option>
-          <option value="ACADEMIC">Academic</option>
-          <option value="CLASS">Class</option>
-        </select>
-        <input
-          type="date"
-          className="ref-input"
-          value={form.periodFrom}
-          onChange={(e) => setForm({ ...form, periodFrom: e.target.value })}
-        />
-        <input
-          type="date"
-          className="ref-input"
-          value={form.periodTo}
-          onChange={(e) => setForm({ ...form, periodTo: e.target.value })}
-        />
-        <textarea
-          className="ref-input min-h-24 md:col-span-2"
-          placeholder="Report summary and details..."
-          value={form.summary}
-          onChange={(e) => setForm({ ...form, summary: e.target.value })}
-          required
-        />
-        <div className="flex gap-2 md:col-span-2">
-          <button type="submit" className="ref-btn-primary" disabled={saving}>
-            {saving ? "Saving..." : editId ? "Update Report" : "Create Report"}
-          </button>
-          {editId ? (
-            <button type="button" className="ref-btn-outline" onClick={resetForm}>
-              Cancel
-            </button>
-          ) : null}
-        </div>
-      </form>
-
-      <div className="ref-card overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-800">My Reports ({pagination.total})</h3>
-          <input
-            className="ref-input ml-auto w-full max-w-xs"
-            placeholder="Search reports..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load(1, search)}
-          />
-          <button type="button" className="ref-btn-outline" onClick={() => load(1, search)}>
-            Search
-          </button>
-        </div>
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[1120px] border-collapse text-sm">
+          <thead className="bg-blue-950 text-white">
             <tr>
-              <th className="px-5 py-3 font-medium">Title</th>
-              <th className="px-5 py-3 font-medium">Type</th>
-              <th className="px-5 py-3 font-medium">Created</th>
-              <th className="px-5 py-3 font-medium">Actions</th>
+              <th rowSpan={2} className="border border-blue-800 px-2 py-2">Roll No.</th>
+              <th rowSpan={2} className="border border-blue-800 px-3 py-2 text-left">Student Name</th>
+              <th colSpan={subjects.length} className="border border-blue-800 px-3 py-2">Subjects Marks (Out of 100)</th>
+              <th rowSpan={2} className="border border-blue-800 px-2 py-2">Total Marks<br />(Out of {subjects.length * 100})</th>
+              <th rowSpan={2} className="border border-blue-800 px-2 py-2">Percentage<br />(%)</th>
+            </tr>
+            <tr>
+              {subjects.map((subject) => (
+                <th key={subject} className="border border-blue-800 px-2 py-2 text-[11px] uppercase">
+                  {subject}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={4} className="px-5 py-6 text-slate-500">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length ? (
-              items.map((item) => (
-                <tr key={item._id} className="border-t border-slate-100">
-                  <td className="px-5 py-3 text-slate-700">{item.title}</td>
-                  <td className="px-5 py-3 text-slate-700">{item.reportType}</td>
-                  <td className="px-5 py-3 text-slate-700">
-                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}
-                  </td>
-                  <td className="px-5 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className="ref-btn-outline" onClick={() => downloadReport(item)}>
-                        Download
-                      </button>
-                      <button type="button" className="ref-btn-outline" onClick={() => onEdit(item)}>
-                        Edit
-                      </button>
-                      <button type="button" className="ref-btn-danger" onClick={() => onDelete(item._id)}>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+            {resultRows.length ? (
+              resultRows.map((row) => (
+                <tr key={row.student._id}>
+                  <td className="border border-blue-200 px-2 py-2 text-center font-black">{row.rollNo}</td>
+                  <td className="border border-blue-200 px-3 py-2 font-black">{getStudentName(row.student)}</td>
+                  {subjects.map((subject) => (
+                    <td key={subject} className="border border-blue-200 p-0 text-center">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="h-9 w-full bg-transparent text-center text-sm font-bold text-slate-900 outline-none focus:bg-blue-50"
+                        value={marksByStudent[row.student._id]?.[subject] ?? ""}
+                        onChange={(event) => updateMark(row.student._id, subject, event.target.value)}
+                        aria-label={`${getStudentName(row.student)} ${subject} marks`}
+                      />
+                    </td>
+                  ))}
+                  <td className="border border-blue-200 px-2 py-2 text-center text-base font-black">{row.total}</td>
+                  <td className="border border-blue-200 px-2 py-2 text-center text-base font-black">{row.percentage.toFixed(2)}%</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="px-5 py-6 text-slate-500">
-                  No reports yet. Create your first report above.
+                <td colSpan={subjects.length + 4} className="border border-blue-200 px-3 py-8 text-center text-slate-500">
+                  Select an assigned class to auto-fetch students.
                 </td>
               </tr>
             )}
+            <tr className="bg-blue-950 text-white">
+              <td colSpan={subjects.length + 3} className="border border-blue-800 px-4 py-3 text-lg font-black uppercase">
+                Class Overall Percentage
+              </td>
+              <td className="border border-blue-800 px-4 py-3 text-center text-lg font-black">{overallPercentage.toFixed(2)}%</td>
+            </tr>
           </tbody>
         </table>
+      </div>
+    </ReportShell>
+  );
+
+  return (
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-950">Reports</h2>
+          <p className="text-sm text-slate-500">Generate attendance and class-wise result reports from your teacher panel.</p>
+        </div>
+      </div>
+
+      {error ? <p className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{error}</p> : null}
+
+      <div className="rounded-2xl border border-white/80 bg-white p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+        <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_1fr_auto] lg:items-end">
+          <Field label="Report Type">
+            <select
+              className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              value={reportType}
+              onChange={(event) => setReportType(event.target.value)}
+            >
+              {REPORT_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Class">
+            <select
+              className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              value={selectedClassId}
+              onChange={(event) => onClassChange(event.target.value)}
+              disabled={!classSectionOptions.length || reportType === "TEACHER_ATTENDANCE"}
+            >
+              <option value="">Select class</option>
+              {classSectionOptions.map((option) => (
+                <option key={option._id} value={option._id}>
+                  {option.className} - {option.section || "A"}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="From Date">
+            <input
+              type="date"
+              className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              value={periodFrom}
+              onChange={(event) => setPeriodFrom(event.target.value)}
+            />
+          </Field>
+
+          <Field label="To Date">
+            <input
+              type="date"
+              className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              value={periodTo}
+              onChange={(event) => setPeriodTo(event.target.value)}
+            />
+          </Field>
+
+          <button
+            type="button"
+            onClick={generateReport}
+            disabled={loading}
+            className="h-12 rounded-xl bg-violet-600 px-6 text-sm font-black text-white shadow-[0_14px_28px_rgba(124,77,255,0.22)] transition hover:bg-violet-700 disabled:opacity-60"
+          >
+            {loading ? "Generating..." : "Generate"}
+          </button>
+        </div>
+
+        {reportType === "CLASS_RESULT" ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <Field label="Academic Session">
+              <input
+                className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                value={academicSession}
+                onChange={(event) => setAcademicSession(event.target.value)}
+              />
+            </Field>
+            <Field label="Examination">
+              <input
+                className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                value={examination}
+                onChange={(event) => setExamination(event.target.value)}
+              />
+            </Field>
+            <Field label="Report Date">
+              <input
+                type="date"
+                className="h-12 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                value={reportDate}
+                onChange={(event) => setReportDate(event.target.value)}
+              />
+            </Field>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+        {reportType === "STUDENT_ATTENDANCE" ? renderStudentAttendanceReport() : null}
+        {reportType === "TEACHER_ATTENDANCE" ? renderTeacherAttendanceReport() : null}
+        {reportType === "CLASS_RESULT" ? renderClassResultReport() : null}
       </div>
     </section>
   );

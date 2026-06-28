@@ -12,12 +12,12 @@ const SPLASH_EXIT_MS = 480;
 
 export default function App() {
   const dispatch = useDispatch();
-  const { accessToken, user, loading, justLoggedIn } = useSelector((state) => state.auth);
+  const { user, loading, justLoggedIn } = useSelector((state) => state.auth);
   const [showSplash, setShowSplash] = useState(false);
   const [splashExiting, setSplashExiting] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showRefreshNotice, setShowRefreshNotice] = useState(false);
-  const hadStoredSessionOnMount = useRef(Boolean(localStorage.getItem("accessToken")));
+  const hadStoredSessionOnMount = useRef(Boolean(localStorage.getItem("hasAuthSession")));
   const refreshNoticeTriggered = useRef(false);
   const isDarkTheme = readAppThemeDark();
 
@@ -26,21 +26,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    dispatch(fetchMe());
+    if (hadStoredSessionOnMount.current) {
+      dispatch(fetchMe());
+    }
   }, [dispatch]);
 
   useLayoutEffect(() => {
-    if (!accessToken) {
-      setShowSplash(false);
-      setSplashExiting(false);
-      setShowDashboard(false);
-      return undefined;
-    }
-
     if (!user) {
       setShowSplash(false);
       setSplashExiting(false);
-      setShowDashboard(true);
+      setShowDashboard(false);
       return undefined;
     }
 
@@ -70,17 +65,17 @@ export default function App() {
       window.clearTimeout(startExitTimer);
       window.clearTimeout(hideSplashTimer);
     };
-  }, [accessToken, user, justLoggedIn, dispatch]);
+  }, [user, justLoggedIn, dispatch]);
 
   useEffect(() => {
     if (!hadStoredSessionOnMount.current || refreshNoticeTriggered.current) return;
-    if (!accessToken || !user || loading || justLoggedIn) return;
+    if (!user || loading || justLoggedIn) return;
 
     refreshNoticeTriggered.current = true;
     setShowRefreshNotice(true);
-  }, [accessToken, user, loading, justLoggedIn]);
+  }, [user, loading, justLoggedIn]);
 
-  const showLogin = !accessToken;
+  const showLogin = !user;
 
   return (
     <>

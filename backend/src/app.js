@@ -26,26 +26,24 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-<<<<<<< HEAD
-app.use(helmet());
+const corsOrigin = env.frontendUrl || (env.nodeEnv === "production" ? false : "http://localhost:5173");
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 app.use(
   cors({
-    origin: env.nodeEnv === "production" ? process.env.FRONTEND_URL : "http://localhost:5173",
+    origin: corsOrigin,
     credentials: true,
   })
 );
 app.use(morgan("dev"));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(sessionMiddleware);
-=======
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors());
-app.use(morgan("dev"));
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+app.use(sessionMiddleware);
 app.use("/api/v1/uploads", express.static(path.resolve(__dirname, "../uploads")));
->>>>>>> usman
 
 app.get("/api/v1/health", (_req, res) => {
   res.status(200).json({ success: true, message: "School ERP API healthy" });

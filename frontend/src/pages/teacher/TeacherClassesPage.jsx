@@ -1,34 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../services/api/client";
-import FormModal from "../../components/ui/FormModal";
-import PageHeader from "../../components/ui/PageHeader";
-import TablePagination from "../../components/ui/TablePagination";
-import { CLASS_OPTIONS, SECTION_OPTIONS } from "../../constants/classes";
-
-const emptyForm = { className: "", section: "A", subject: "", roomNo: "", schedule: "" };
+import { resolveStudentPhotoUrl } from "../../utils/mediaUrl";
 
 export default function TeacherClassesPage() {
-  const [form, setForm] = useState(emptyForm);
-  const [editId, setEditId] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
-  const [showModal, setShowModal] = useState(false);
+  const [profileClass, setProfileClass] = useState("");
+  const [profileSection, setProfileSection] = useState("A");
+  const [profileStudents, setProfileStudents] = useState([]);
+  const [profilesLoading, setProfilesLoading] = useState(false);
 
-  const load = async (nextPage = page, nextSearch = search) => {
+  const assignedClassNames = useMemo(() => [...new Set(items.map((item) => item.className))], [items]);
+  const assignedSections = useMemo(
+    () => [...new Set(items.filter((item) => !profileClass || item.className === profileClass).map((item) => item.section || "A"))],
+    [items, profileClass]
+  );
+
+  const load = async () => {
     setLoading(true);
     setError("");
     try {
       const { data } = await api.get("/teacher-panel/classes", {
-        params: { page: nextPage, limit: 10, search: nextSearch },
+        params: { page: 1, limit: 100 },
       });
       setItems(data.data.items || []);
-      setPagination({ totalPages: data.data.totalPages || 1, total: data.data.total || 0 });
-      setPage(data.data.page || nextPage);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load classes");
       setItems([]);
@@ -38,146 +34,110 @@ export default function TeacherClassesPage() {
   };
 
   useEffect(() => {
-    load(1, "");
+    load();
   }, []);
 
-  const resetForm = () => {
-    setForm(emptyForm);
-    setEditId(null);
-    setShowModal(false);
-  };
+  useEffect(() => {
+    if (!profileClass && assignedClassNames.length) {
+      setProfileClass(assignedClassNames[0]);
+    }
+  }, [assignedClassNames, profileClass]);
 
-  const onSubmit = async (event) => {
-    event.preventDefault();
-    setSaving(true);
-    setError("");
-    try {
-      if (editId) {
-        await api.put(`/teacher-panel/classes/${editId}`, form);
-      } else {
-        await api.post("/teacher-panel/classes", form);
+  useEffect(() => {
+    if (assignedSections.length && !assignedSections.includes(profileSection)) {
+      setProfileSection(assignedSections[0]);
+    }
+  }, [assignedSections, profileSection]);
+
+  useEffect(() => {
+    const loadProfiles = async () => {
+      if (!profileClass || !profileSection) {
+        setProfileStudents([]);
+        return;
       }
-      resetForm();
-      await load(1, search);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to save class");
-    } finally {
-      setSaving(false);
-    }
-  };
+      setProfilesLoading(true);
+      try {
+        const { data } = await api.get("/teacher-panel/students", {
+          params: { className: profileClass, section: profileSection },
+        });
+        setProfileStudents(data.data || []);
+      } catch {
+        setProfileStudents([]);
+      } finally {
+        setProfilesLoading(false);
+      }
+    };
 
-  const onEdit = (item) => {
-    setEditId(item._id);
-    setForm({
-      className: item.className,
-      section: item.section || "A",
-      subject: item.subject,
-      roomNo: item.roomNo || "",
-      schedule: item.schedule || "",
-    });
-    setShowModal(true);
-  };
-
-  const onDelete = async (id) => {
-    if (!window.confirm("Delete this class?")) return;
-    setError("");
-    try {
-      await api.delete(`/teacher-panel/classes/${id}`);
-      if (editId === id) resetForm();
-      await load(page, search);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete class");
-    }
-  };
+    loadProfiles();
+  }, [profileClass, profileSection]);
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title="My Classes"
-        subtitle="Add, edit and manage your assigned classes."
-        actionLabel="Add Class"
-        onAction={() => { resetForm(); setShowModal(true); }}
-      />
-
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
-
-      <div className="ref-card overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-800">Class List ({pagination.total})</h3>
-          <input
-            className="ref-input ml-auto w-full max-w-xs"
-            placeholder="Search classes..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && load(1, search)}
-          />
-          <button type="button" className="ref-btn-outline" onClick={() => load(1, search)}>
-            Search
-          </button>
-        </div>
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
-            <tr>
-              <th className="px-5 py-3 font-medium">Class</th>
-              <th className="px-5 py-3 font-medium">Section</th>
-              <th className="px-5 py-3 font-medium">Subject</th>
-              <th className="px-5 py-3 font-medium">Room</th>
-              <th className="px-5 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">Loading...</td>
-              </tr>
-            ) : items.length ? (
-              items.map((item) => (
-                <tr key={item._id} className="border-t border-slate-100">
-                  <td className="px-5 py-3 text-slate-700">{item.className}</td>
-                  <td className="px-5 py-3 text-slate-700">{item.section}</td>
-                  <td className="px-5 py-3 text-slate-700">{item.subject}</td>
-                  <td className="px-5 py-3 text-slate-700">{item.roomNo || "-"}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex gap-2">
-                      <button type="button" className="ref-btn-outline" onClick={() => onEdit(item)}>Edit</button>
-                      <button type="button" className="ref-btn-danger" onClick={() => onDelete(item._id)}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">No classes yet. Click Add Class to get started.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <TablePagination
-          page={page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          onPrev={() => load(Math.max(page - 1, 1), search)}
-          onNext={() => load(Math.min(page + 1, pagination.totalPages), search)}
-        />
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900">My Classes</h2>
+        <p className="text-sm text-slate-500">View students from your assigned classes.</p>
       </div>
 
-      <FormModal open={showModal} title={editId ? "Edit Class" : "Add Class"} onClose={resetForm}>
-        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <select className="ref-input" value={form.className} onChange={(e) => setForm({ ...form, className: e.target.value })} required>
-            <option value="">Select class *</option>
-            {CLASS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="ref-input" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })}>
-            {SECTION_OPTIONS.map((s) => <option key={s} value={s}>Section {s}</option>)}
-          </select>
-          <input className="ref-input sm:col-span-2" placeholder="Subject *" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} required />
-          <input className="ref-input" placeholder="Room no" value={form.roomNo} onChange={(e) => setForm({ ...form, roomNo: e.target.value })} />
-          <input className="ref-input" placeholder="Schedule" value={form.schedule} onChange={(e) => setForm({ ...form, schedule: e.target.value })} />
-          <button type="submit" className="ref-btn-primary sm:col-span-2" disabled={saving}>
-            {saving ? "Saving..." : editId ? "Update Class" : "Add Class"}
-          </button>
-        </form>
-      </FormModal>
+      <div className="ref-card p-5">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Class Student Profiles</h3>
+            <p className="text-sm text-slate-500">Select class and section to view assigned students.</p>
+          </div>
+          <div className="ml-auto grid w-full gap-3 sm:w-auto sm:grid-cols-2">
+            <label className="text-xs font-black uppercase tracking-[0.08em] text-blue-700">
+              Class
+              <select
+                className="mt-2 h-11 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 sm:w-48"
+                value={profileClass}
+                onChange={(event) => setProfileClass(event.target.value)}
+              >
+                {assignedClassNames.map((className) => (
+                  <option key={className} value={className}>{className}</option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs font-black uppercase tracking-[0.08em] text-blue-700">
+              Section
+              <select
+                className="mt-2 h-11 w-full rounded-xl border border-blue-200 bg-white px-4 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 sm:w-40"
+                value={profileSection}
+                onChange={(event) => setProfileSection(event.target.value)}
+              >
+                {assignedSections.map((section) => (
+                  <option key={section} value={section}>Section {section}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {profilesLoading ? (
+            <p className="text-sm text-slate-500">Loading students...</p>
+          ) : profileStudents.length ? (
+            profileStudents.map((student) => {
+              const photo = resolveStudentPhotoUrl(student.studentPhotoUrl);
+              const initials = `${student.firstName?.[0] || ""}${student.lastName?.[0] || ""}` || "S";
+              return (
+                <div key={student._id} className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/40 p-3">
+                  <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-black text-blue-700">
+                    {photo ? <img src={photo} alt={`${student.firstName} ${student.lastName}`} className="h-full w-full object-cover" /> : initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-slate-950">{student.firstName} {student.lastName}</p>
+                    <p className="text-xs font-semibold text-slate-500">Reg: {student.admissionNo || student._id}</p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-sm text-slate-500">No students found for this class and section.</p>
+          )}
+        </div>
+      </div>
+
+      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
     </section>
   );
 }

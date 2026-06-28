@@ -3,6 +3,7 @@ import { Attendance } from "../../models/Attendance.js";
 import { AcademicRecord } from "../../models/AcademicRecord.js";
 import { TeacherReport } from "../../models/TeacherReport.js";
 import { Student } from "../../models/Student.js";
+import { TeacherDailyAttendance } from "../../models/TeacherDailyAttendance.js";
 import { ApiError } from "../../utils/apiError.js";
 import { logTeacherActivity } from "./activityLogger.js";
 
@@ -111,7 +112,7 @@ export const listStudentsForClass = async (teacherId, className, section) => {
     section: section || "A",
     isDeleted: false,
   })
-    .select("_id admissionNo firstName lastName className section")
+    .select("_id admissionNo rollNumber firstName lastName className section studentPhotoUrl fatherName guardianName gender")
     .sort({ firstName: 1 })
     .lean();
 
@@ -175,7 +176,7 @@ export const listAttendanceSummary = async (teacherId, query) => {
     section: section || "A",
     isDeleted: false,
   })
-    .select("_id admissionNo firstName lastName")
+    .select("_id admissionNo rollNumber firstName lastName className section studentPhotoUrl")
     .sort({ admissionNo: 1 })
     .lean();
 
@@ -203,14 +204,66 @@ export const listAttendanceSummary = async (teacherId, query) => {
     const counts = countsByStudent[sid] || { PRESENT: 0, ABSENT: 0, LATE: 0, LEAVE: 0 };
     return {
       studentId: student._id,
-      rollNo: student.admissionNo,
+      rollNo: student.rollNumber || student.admissionNo,
+      admissionNo: student.admissionNo,
       name: `${student.firstName} ${student.lastName}`.trim(),
+      className: student.className,
+      section: student.section || "A",
+      studentPhotoUrl: student.studentPhotoUrl,
       present: counts.PRESENT,
       absent: counts.ABSENT,
       late: counts.LATE,
       leave: counts.LEAVE,
     };
   });
+};
+
+export const listMyAttendanceSummary = async (teacherId, query) => {
+  const { fromDate, toDate } = query;
+  if (!fromDate || !toDate) {
+    throw new ApiError(400, "fromDate and toDate are required");
+  }
+
+  const from = new Date(fromDate);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(toDate);
+  to.setHours(23, 59, 59, 999);
+
+  if (from > to) throw new ApiError(400, "fromDate cannot be after toDate");
+
+  const records = await TeacherDailyAttendance.find({
+    teacherId,
+    isDeleted: false,
+    date: { $gte: from, $lte: to },
+  })
+    .select("date status remarks")
+    .sort({ date: 1 })
+    .lean();
+
+  const totals = records.reduce(
+    (acc, record) => {
+      if (record.status === "PRESENT") acc.present += 1;
+      if (record.status === "ABSENT") acc.absent += 1;
+      if (record.status === "LATE") acc.late += 1;
+      if (record.status === "LEAVE") acc.leave += 1;
+      return acc;
+    },
+    { present: 0, absent: 0, late: 0, leave: 0 }
+  );
+
+  return {
+    fromDate,
+    toDate,
+    totals: {
+      ...totals,
+      marked: records.length,
+    },
+    items: records.map((record) => ({
+      date: record.date,
+      status: record.status,
+      remarks: record.remarks || "",
+    })),
+  };
 };
 
 export const createAttendance = async (teacherId, payload) => {

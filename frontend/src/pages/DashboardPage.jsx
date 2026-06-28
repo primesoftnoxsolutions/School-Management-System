@@ -49,6 +49,11 @@ import TeacherAttendancePage from "./teacher/TeacherAttendancePage";
 import TeacherAcademicRecordsPage from "./teacher/TeacherAcademicRecordsPage";
 
 import TeacherReportsPage from "./teacher/TeacherReportsPage";
+import MonthlySyllabusPage from "./teacher/MonthlySyllabusPage";
+import AssignedDutiesPage from "./teacher/AssignedDutiesPage";
+import RollNoSlipsManagementPage from "./teacher/RollNoSlipsManagementPage";
+import PaperResultCardManagementPage from "./teacher/PaperResultCardManagementPage";
+import ClassTimeTablePage from "./teacher/ClassTimeTablePage";
 
 
 
@@ -85,6 +90,21 @@ export default function DashboardPage({ entering = false }) {
       case "Academic Records":
 
         return <TeacherAcademicRecordsPage />;
+
+      case "Monthly Syllabus":
+        return <MonthlySyllabusPage dark={isAppDark} />;
+
+      case "Assigned Duties":
+        return <AssignedDutiesPage dark={isAppDark} />;
+
+      case "Roll No Slips Management":
+        return <RollNoSlipsManagementPage dark={isAppDark} />;
+
+      case "Paper, Date Sheet & Result":
+        return <PaperResultCardManagementPage dark={isAppDark} />;
+
+      case "Class Time Table":
+        return <ClassTimeTablePage dark={isAppDark} />;
 
       case "Reports":
 
