@@ -1,8 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../services/api/client";
 
-const SESSION_STORAGE_KEY = "hasAuthSession";
-
 const initialState = {
   user: null,
   loading: false,
@@ -97,7 +95,6 @@ const authSlice = createSlice({
         state.loading = false;
         state.sessionChecked = true;
         state.user = null;
-        localStorage.removeItem(SESSION_STORAGE_KEY);
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;

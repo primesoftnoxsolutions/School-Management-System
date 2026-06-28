@@ -17,7 +17,6 @@ Enterprise-grade School ERP starter scaffold with:
    - `npm install`
 2. Configure backend env
    - Copy `backend/.env.example` to `backend/.env`
-   - Set `FRONTEND_URL` if the frontend is hosted on a different origin than the backend
 3. Start MongoDB (required for persistent data)
    - Windows service: `npm run mongo:start --workspace backend`
    - If MongoDB is not installed/running, backend auto-starts an in-memory dev database
