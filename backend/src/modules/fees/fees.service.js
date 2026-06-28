@@ -1,6 +1,7 @@
 import { FeePayment } from "../../models/FeePayment.js";
 import { FeeAssignment } from "../../models/FeeAssignment.js";
 import { Student } from "../../models/Student.js";
+import { User } from "../../models/User.js";
 import { ApiError } from "../../utils/apiError.js";
 
 const genReceipt = () => `RCP-${Date.now()}`;
@@ -284,9 +285,16 @@ export const getPendingFeesSummary = async (query = {}) => {
     .populate("studentId", "firstName lastName className section admissionNo rollNumber")
     .lean();
 
+  const creatorIds = [...new Set(assignments.map((item) => item.createdBy).filter(Boolean))];
+  const creators = creatorIds.length
+    ? await User.find({ _id: { $in: creatorIds } }).select("fullName").lean()
+    : [];
+  const creatorNameById = new Map(creators.map((user) => [String(user._id), user.fullName || ""]));
+
   return assignments.map((a) => ({
     id: a._id,
     studentId: a.studentId?._id,
+    teacherName: creatorNameById.get(String(a.createdBy)) || a.createdBy || "",
     studentName: a.studentId ? `${a.studentId.firstName} ${a.studentId.lastName}` : "",
     className: a.studentId?.className || "",
     section: a.studentId?.section || "A",

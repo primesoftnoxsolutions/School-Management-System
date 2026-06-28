@@ -16,4 +16,7 @@ export const env = {
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL || "",
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD || "",
   seedAdminName: process.env.SEED_ADMIN_NAME || "Super Admin",
+  seedFinanceEmail: process.env.SEED_FINANCE_EMAIL || "",
+  seedFinancePassword: process.env.SEED_FINANCE_PASSWORD || "",
+  seedFinanceName: process.env.SEED_FINANCE_NAME || "Finance Manager",
 };

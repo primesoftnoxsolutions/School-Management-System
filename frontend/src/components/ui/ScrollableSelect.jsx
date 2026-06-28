@@ -9,6 +9,7 @@ export default function ScrollableSelect({
   onChange,
   required = false,
   openUpward = false,
+  portal = false,
   dark = false,
   menuMaxHeight = 176,
 }) {
@@ -19,13 +20,16 @@ export default function ScrollableSelect({
   const menuRef = useRef(null);
 
   const updateMenuPosition = () => {
-    if (!openUpward || !triggerRef.current) return;
+    if (!portal || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    const maxHeight = Math.min(menuMaxHeight, Math.max(rect.top - 12, 120));
+    const spaceAbove = Math.max(rect.top - 12, 120);
+    const spaceBelow = Math.max(window.innerHeight - rect.bottom - 12, 120);
+    const maxHeight = Math.min(menuMaxHeight, openUpward ? spaceAbove : spaceBelow);
     setMenuStyle({
       left: rect.left,
       width: rect.width,
-      bottom: window.innerHeight - rect.top + 4,
+      top: openUpward ? undefined : rect.bottom + 4,
+      bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
       maxHeight,
     });
   };
@@ -43,7 +47,7 @@ export default function ScrollableSelect({
   }, []);
 
   useEffect(() => {
-    if (!open || !openUpward) return undefined;
+    if (!open || !portal) return undefined;
     updateMenuPosition();
     const onReposition = () => updateMenuPosition();
     window.addEventListener("resize", onReposition);
@@ -52,10 +56,10 @@ export default function ScrollableSelect({
       window.removeEventListener("resize", onReposition);
       window.removeEventListener("scroll", onReposition, true);
     };
-  }, [open, openUpward, options.length, menuMaxHeight]);
+  }, [open, openUpward, portal, options.length, menuMaxHeight]);
 
   const selectedLabel = options.find((opt) => opt.value === value)?.label || value;
-  const resolvedMenuHeight = openUpward ? menuStyle.maxHeight || menuMaxHeight : menuMaxHeight;
+  const resolvedMenuHeight = portal ? menuStyle.maxHeight || menuMaxHeight : menuMaxHeight;
 
   const triggerClass = dark
     ? "flex w-full items-center justify-between gap-2 rounded-xl border border-white/[0.06] bg-[#1a1b26] px-3 py-2.5 text-left text-sm text-white outline-none transition hover:border-[#7c4dff]/30 focus:border-[#7c4dff]/40 focus:ring-2 focus:ring-[#7c4dff]/15"
@@ -105,7 +109,7 @@ export default function ScrollableSelect({
         </span>
         <span className={`shrink-0 ${dark ? "text-[#9e9e9e]" : "text-slate-400"}`}>{open ? "▲" : "▼"}</span>
       </button>
-      {open && openUpward ? (
+      {open && portal ? (
         <>
           <DropdownBackdrop onClose={() => setOpen(false)} />
           <DropdownMenuPortal menuRef={menuRef} style={menuStyle} dark={dark}>
@@ -113,7 +117,7 @@ export default function ScrollableSelect({
           </DropdownMenuPortal>
         </>
       ) : null}
-      {open && !openUpward ? (
+      {open && !portal ? (
         <div
           className={`absolute z-20 mt-1 w-full overflow-hidden rounded-xl shadow-lg ${
             dark ? "border border-white/[0.06] bg-[#161722]" : "border border-slate-200 bg-white"

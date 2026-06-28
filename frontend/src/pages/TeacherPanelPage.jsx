@@ -50,7 +50,7 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
   return (
     <section className="space-y-6">
       <div>
-        <h2 className={`text-2xl font-bold ${dark ? "text-white" : "text-slate-900"}`}>My Teacher Panel</h2>
+        <h2 className={`text-2xl font-bold ${dark ? "text-white" : "text-slate-900"}`}>Teacher Page</h2>
         <p className={`text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
           Welcome {panel?.teacher?.fullName}. This is your dedicated teacher workspace.
         </p>
@@ -89,12 +89,15 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
 
       <div className={`${cardClass} p-5`}>
         <h3 className={`mb-4 text-base font-semibold ${dark ? "text-white" : "text-slate-800"}`}>Quick Actions</h3>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {[
-            { label: "Mark Attendance", target: "Mark Attendance" },
-            { label: "View Assigned Classes", target: "My Classes" },
-            { label: "Update Academic Records", target: "Academic Records" },
-            { label: "Download Report", target: "Reports" },
+            { label: "Assigned Classes & Sections", target: "Assigned Classes & Sections" },
+            { label: "Attendance", target: "Attendance" },
+            { label: "Syllabus", target: "Syllabus" },
+            { label: "Duties", target: "Duties" },
+            { label: "Time Table", target: "Time Table" },
+            { label: "Statements", target: "Statements" },
+            { label: "Academic", target: "Academic" },
           ].map((action) => (
             <button
               key={action.label}
@@ -103,7 +106,7 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
               className={actionBtnClass}
             >
               <span className={dark ? "text-[#7c4dff]" : "text-blue-600"}>{action.label}</span>
-              <span className={dark ? "text-[#9e9e9e]" : "text-slate-400"}>›</span>
+              <span className={dark ? "text-[#9e9e9e]" : "text-slate-400"}>{">"}</span>
             </button>
           ))}
         </div>

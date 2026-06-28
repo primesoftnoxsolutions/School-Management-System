@@ -12,12 +12,16 @@ const SPLASH_EXIT_MS = 480;
 
 export default function App() {
   const dispatch = useDispatch();
-  const { accessToken, user, loading, justLoggedIn } = useSelector((state) => state.auth);
+  const { user, loading, justLoggedIn, sessionChecked } = useSelector((state) => state.auth);
   const [showSplash, setShowSplash] = useState(false);
   const [splashExiting, setSplashExiting] = useState(false);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showRefreshNotice, setShowRefreshNotice] = useState(false);
-  const hadStoredSessionOnMount = useRef(Boolean(localStorage.getItem("accessToken")));
+  const [branchSection, setBranchSection] = useState(() => {
+    const stored = localStorage.getItem("schoolDashboardBranchSection");
+    return stored === "Girls" || stored === "Boys" ? stored : "Boys";
+  });
+  const hadStoredSessionOnMount = useRef(Boolean(sessionStorage.getItem("hadSession")));
   const refreshNoticeTriggered = useRef(false);
   const isDarkTheme = readAppThemeDark();
 
@@ -29,18 +33,15 @@ export default function App() {
     dispatch(fetchMe());
   }, [dispatch]);
 
-  useLayoutEffect(() => {
-    if (!accessToken) {
-      setShowSplash(false);
-      setSplashExiting(false);
-      setShowDashboard(false);
-      return undefined;
-    }
+  useEffect(() => {
+    localStorage.setItem("schoolDashboardBranchSection", branchSection);
+  }, [branchSection]);
 
+  useLayoutEffect(() => {
     if (!user) {
       setShowSplash(false);
       setSplashExiting(false);
-      setShowDashboard(true);
+      setShowDashboard(false);
       return undefined;
     }
 
@@ -70,22 +71,24 @@ export default function App() {
       window.clearTimeout(startExitTimer);
       window.clearTimeout(hideSplashTimer);
     };
-  }, [accessToken, user, justLoggedIn, dispatch]);
+  }, [user, justLoggedIn, dispatch]);
 
   useEffect(() => {
     if (!hadStoredSessionOnMount.current || refreshNoticeTriggered.current) return;
-    if (!accessToken || !user || loading || justLoggedIn) return;
+    if (!user || loading || justLoggedIn || !sessionChecked) return;
 
     refreshNoticeTriggered.current = true;
     setShowRefreshNotice(true);
-  }, [accessToken, user, loading, justLoggedIn]);
+  }, [user, loading, justLoggedIn, sessionChecked]);
 
-  const showLogin = !accessToken;
+  const showLogin = sessionChecked && !user;
 
   return (
     <>
       {showLogin ? <LoginPage /> : null}
-      {showDashboard ? <DashboardPage entering={justLoggedIn} /> : null}
+      {showDashboard ? (
+        <DashboardPage entering={justLoggedIn} branchSection={branchSection} onBranchChange={setBranchSection} />
+      ) : null}
       {showSplash ? <AppLaunchSplash user={user} dark={isDarkTheme} exiting={splashExiting} /> : null}
       {showRefreshNotice ? (
         <RefreshSuccessNotice dark={isDarkTheme} onDone={hideRefreshNotice} />

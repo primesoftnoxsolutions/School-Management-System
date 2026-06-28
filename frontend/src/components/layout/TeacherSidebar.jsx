@@ -1,10 +1,30 @@
-import { useState } from "react";
-import { IconLogout, teacherNavIconMap } from "../icons/NavIcons";
+import { useEffect, useState } from "react";
+import { IconChevronDown, IconLogout, teacherNavIconMap } from "../icons/NavIcons";
+import { isTeacherSubpage, TEACHER_PORTAL_SUBPAGES } from "../../constants/teacherNav";
+import TeacherNavSubmenu from "./TeacherNavSubmenu";
 import LogoutConfirmModal from "./LogoutConfirmModal";
 
 export default function TeacherSidebar({ selected, onSelect, onLogout, dark = true, entering = false }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const navItems = ["My Panel", "Mark Attendance", "My Classes", "Academic Records", "Reports"];
+  const [teacherMenuOpen, setTeacherMenuOpen] = useState(false);
+  const isTeacherChildActive = isTeacherSubpage(selected);
+
+  useEffect(() => {
+    if (isTeacherChildActive) setTeacherMenuOpen(true);
+    else setTeacherMenuOpen(false);
+  }, [isTeacherChildActive]);
+
+  const headerIdleClass = dark
+    ? "bg-[#131526] text-[#d7d2ff] hover:bg-[#1a1c33] hover:text-white"
+    : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900";
+
+  const headerActiveClass = dark
+    ? "bg-[#7c4dff] text-white shadow-[0_12px_24px_rgba(124,77,255,0.28)]"
+    : "bg-gradient-to-r from-[#6f58ff] to-[#4b36d2] text-white shadow-[0_14px_28px_rgba(91,70,220,0.42)]";
+
+  const chevronIdleClass = dark
+    ? "bg-[#131526] text-[#d7d2ff] hover:bg-[#1a1c33] hover:text-white"
+    : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900";
 
   return (
     <>
@@ -42,36 +62,59 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
           </div>
         </div>
 
-        <nav className="scrollbar-sidebar flex-1 space-y-1.5 overflow-y-auto px-4 py-5">
-          {navItems.map((item) => {
-            const active = selected === item;
-            const Icon = teacherNavIconMap[item];
-            return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => onSelect(item)}
-                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
-                  active
-                    ? dark
-                      ? "bg-[#7c4dff] text-white"
-                      : "bg-blue-600 text-white shadow-md"
-                    : dark
-                      ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    active ? "bg-white/15" : dark ? "" : "bg-slate-100"
+        <nav className="scrollbar-sidebar scrollbar-hide flex-1 space-y-1.5 overflow-y-auto px-4 py-5">
+          <div className="rounded-2xl border border-transparent transition">
+            <div className="p-1">
+              <div className="flex items-stretch overflow-hidden rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect("Teacher Page");
+                  }}
+                  className={`flex flex-1 items-center gap-3 px-3.5 py-3 text-left text-sm font-medium transition ${
+                    selected === "Teacher Page" ? headerActiveClass : headerIdleClass
                   }`}
                 >
-                  {Icon ? <Icon className="h-5 w-5" /> : null}
-                </span>
-                <span>{item}</span>
-              </button>
-            );
-          })}
+                  <span
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                      selected === "Teacher Page" ? "bg-white/15" : dark ? "bg-white/5" : "bg-slate-100"
+                    }`}
+                  >
+                    {(() => {
+                      const Icon = teacherNavIconMap["Teacher Page"];
+                      return Icon ? <Icon className="h-5 w-5" /> : null;
+                    })()}
+                  </span>
+                  <span>Teacher Page</span>
+                </button>
+
+                <button
+                  type="button"
+                  aria-label={teacherMenuOpen ? "Collapse teacher pages" : "Expand teacher pages"}
+                  onClick={() => setTeacherMenuOpen((value) => !value)}
+                  className={`flex w-12 items-center justify-center text-sm transition ${chevronIdleClass}`}
+                >
+                  <IconChevronDown className={`h-4 w-4 transition-transform duration-300 ${teacherMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={`grid overflow-hidden transition-all duration-300 ease-out ${
+                teacherMenuOpen ? "grid-rows-[1fr] pb-3 opacity-100" : "grid-rows-[0fr] pb-0 opacity-0"
+              }`}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <TeacherNavSubmenu
+                  items={TEACHER_PORTAL_SUBPAGES}
+                  selected={selected}
+                  onSelect={onSelect}
+                  dark={dark}
+                  onDarkSidebar={dark}
+                />
+              </div>
+            </div>
+          </div>
         </nav>
 
         <div className="p-4">
@@ -79,9 +122,7 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
             type="button"
             onClick={() => setShowLogoutConfirm(true)}
             className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
-              dark
-                ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
-                : "text-rose-600 hover:bg-rose-50"
+              dark ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white" : "text-rose-600 hover:bg-rose-50"
             }`}
           >
             <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${dark ? "" : "bg-rose-50"}`}>

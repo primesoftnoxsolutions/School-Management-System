@@ -10,6 +10,7 @@ const normalizeAssignments = (payload) => {
     return payload.assignments
       .map((row) => ({
         className: row.className?.trim(),
+        branch: row.branch === "Boys" ? "Boys" : "Girls",
         section: (row.section || "").trim(),
         subject: (row.subject || "").trim(),
       }))
@@ -39,6 +40,7 @@ const saveTeacherAssignments = async (teacherId, assignments, actorId) => {
     await TeacherClass.create({
       teacherId,
       className: row.className,
+      branch: row.branch || "Girls",
       section: row.section,
       subject: row.subject,
       createdBy: actorId,
@@ -103,7 +105,7 @@ export const createTeacher = async (payload, actorId) => {
       teacherId: teacher.id,
       action: "ASSIGN",
       module: "TEACHERS",
-      details: `Assigned to ${assignments.map((a) => `${a.className} ${a.section} (${a.subject})`).join(", ")}`,
+      details: `Assigned to ${assignments.map((a) => `${a.branch} ${a.className} ${a.section} (${a.subject})`).join(", ")}`,
       status: "SUCCESS",
       performedAt: new Date(),
       createdBy: actorId,
@@ -173,7 +175,7 @@ export const updateTeacher = async (id, payload, actorId) => {
       action: "UPDATE",
       module: "TEACHERS",
       details: assignments.length
-        ? `Updated assignments: ${assignments.map((a) => `${a.className} ${a.section} (${a.subject})`).join(", ")}`
+        ? `Updated assignments: ${assignments.map((a) => `${a.branch} ${a.className} ${a.section} (${a.subject})`).join(", ")}`
         : "Removed all class assignments (NO ASSIGN)",
       status: "SUCCESS",
       performedAt: new Date(),
@@ -183,7 +185,7 @@ export const updateTeacher = async (id, payload, actorId) => {
   }
 
   const assignedClasses = await TeacherClass.find({ teacherId: teacher._id, isDeleted: false })
-    .select("className section subject")
+    .select("className branch section subject")
     .lean();
   const profile = await TeacherProfile.findOne({ teacherId: teacher._id, isDeleted: false }).lean();
 
@@ -259,7 +261,7 @@ export const listTeachers = async ({ page, limit, search, className, section }) 
       teacherId: { $in: teacherIds },
       isDeleted: false,
     })
-      .select("teacherId className section subject")
+      .select("teacherId className branch section subject")
       .lean(),
     getTeacherProfilesMap(teacherIds),
   ]);

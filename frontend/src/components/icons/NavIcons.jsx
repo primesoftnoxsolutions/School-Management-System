@@ -118,6 +118,108 @@ export function IconReports({ className = "h-4 w-4" }) {
   );
 }
 
+export function IconClock({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 15 14" />
+    </svg>
+  );
+}
+
+export function IconChecklist({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="M8 8l1.5 1.5L12 7" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="16" y2="17" />
+    </svg>
+  );
+}
+
+export function IconClasses({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+export function IconSyllabus({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <line x1="8" y1="7" x2="16" y2="7" />
+      <line x1="8" y1="11" x2="14" y2="11" />
+    </svg>
+  );
+}
+
+export function IconTimeTable({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="8" y1="4" x2="8" y2="21" />
+      <line x1="14" y1="4" x2="14" y2="21" />
+      <line x1="3" y1="14" x2="21" y2="14" />
+    </svg>
+  );
+}
+
+export function IconAcademic({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z" />
+      <path d="M6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5" />
+    </svg>
+  );
+}
+
+export function IconDateSheet({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="8" y1="4" x2="8" y2="21" />
+      <path d="M12 14h6M12 18h4" />
+    </svg>
+  );
+}
+
+export function IconResultCard({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M7 3h10l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  );
+}
+
+export function IconRollSlip({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M8 3h10l3 3v15H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+      <path d="M14 3v4h4" />
+      <path d="M10 11h4M10 15h6" />
+    </svg>
+  );
+}
+
+export function IconChevronDown({ className = "h-4 w-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
+}
+
 export function IconLogout({ className = "h-4 w-4" }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -142,10 +244,12 @@ export const navIconMap = {
   Teachers: IconTeachers,
   Admissions: IconAdmissions,
   Students: IconStudents,
+  "Assigned Classes & Sections": IconClasses,
   "Fee Management": IconFee,
   "Fee Refund": IconRefund,
   "Fine Management": IconFine,
   "Students Portfolios": IconPortfolio,
+  "Finance Management": IconFee,
   "School Leaving": IconLeaving,
   "Time & Attendance": IconAttendance,
   Payroll: IconPayroll,
@@ -153,20 +257,27 @@ export const navIconMap = {
 };
 
 export const teacherNavIconMap = {
+  "Teacher Page": IconDashboard,
+  "Assigned Classes & Sections": IconClasses,
+  Attendance: IconAttendance,
+  Syllabus: IconSyllabus,
+  Duties: IconChecklist,
+  "Time Table": IconTimeTable,
+  Statements: IconReports,
+  Academic: IconAcademic,
+  // Backward-compatible aliases
   "My Panel": IconDashboard,
   "Mark Attendance": IconAttendance,
   "My Classes": IconClasses,
-  "Academic Records": IconPortfolio,
+  "Academic Records": IconAcademic,
   Reports: IconReports,
 };
 
-function IconClasses({ className = "h-4 w-4" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  );
-}
+export const studentNavIconMap = {
+  "Student Admissions": IconAdmissions,
+  "Student Attendance": IconAttendance,
+  "Student Time Table": IconTimeTable,
+  "Student Roll Slips": IconRollSlip,
+  "Student Date Sheet": IconDateSheet,
+  "Student Result Cards": IconResultCard,
+};

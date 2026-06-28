@@ -11,12 +11,12 @@ const STEPS = [
   { id: 2, title: "Guardians Details" },
   { id: 3, title: "Students Previous Data" },
   { id: 4, title: "Class, Section, Subjects" },
-  { id: 5, title: "Fee Management" },
+  { id: 5, title: "Fee Details" },
 ];
 
 const INSTALLMENT_OPTIONS = Array.from({ length: 12 }, (_, index) => {
   const value = String(index + 1);
-  return { value, label: `${index + 1} installment${index + 1 > 1 ? "s" : ""}` };
+  return { value, label: `${index + 1} month${index + 1 > 1 ? "s" : ""}` };
 });
 
 function calcMonthlyFromAnnual(annualFee, installmentCount) {
@@ -385,7 +385,7 @@ export default function CreateStudentWizard({
           return "Annual fee is required when installments are enabled.";
         }
         if (Number(form.annualFee) <= 0) return "Annual fee must be greater than zero for installments.";
-        if (!form.installmentCount) return "Please select the number of installments.";
+        if (!form.installmentCount) return "Please select the number of months.";
       } else if (form.annualFee !== "" && Number(form.annualFee) < 0) {
         return "Annual fee cannot be negative.";
       }
@@ -488,42 +488,44 @@ export default function CreateStudentWizard({
 
   return (
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-5 overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2">
-        {visibleSteps.map((item, index) => {
-          const active = step === item.id;
-          const done = step > item.id;
-          return (
-            <div key={item.id} className="flex flex-1 items-center gap-2">
-              <div
-                className={`wizard-step-indicator flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                  active ? "wizard-step-indicator-active" : ""
-                } ${
-                  active || done
-                    ? dark
-                      ? "bg-[#7c4dff] text-white"
-                      : "bg-indigo-600 text-white"
-                    : dark
-                      ? "bg-[#1a1b26] text-[#9e9e9e]"
-                      : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {item.id}
+      {step !== 5 ? (
+        <div className="flex shrink-0 items-center gap-2">
+          {visibleSteps.map((item, index) => {
+            const active = step === item.id;
+            const done = step > item.id;
+            return (
+              <div key={item.id} className="flex flex-1 items-center gap-2">
+                <div
+                  className={`wizard-step-indicator flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    active ? "wizard-step-indicator-active" : ""
+                  } ${
+                    active || done
+                      ? dark
+                        ? "bg-[#7c4dff] text-white"
+                        : "bg-indigo-600 text-white"
+                      : dark
+                        ? "bg-[#1a1b26] text-[#9e9e9e]"
+                        : "bg-slate-100 text-slate-500"
+                  }`}
+                >
+                  {item.id}
+                </div>
+                <div className="min-w-0">
+                  <p className={`truncate text-xs font-semibold ${active ? (dark ? "text-[#7c4dff]" : "text-indigo-700") : dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                    Step {item.id}
+                  </p>
+                  <p className={`truncate text-sm font-medium ${active ? (dark ? "text-white" : "text-slate-900") : dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                    {item.title}
+                  </p>
+                </div>
+                {index < visibleSteps.length - 1 ? (
+                  <div className={`mx-1 hidden h-px flex-1 sm:block ${dark ? "bg-white/[0.06]" : "bg-slate-200"}`} />
+                ) : null}
               </div>
-              <div className="min-w-0">
-                <p className={`truncate text-xs font-semibold ${active ? (dark ? "text-[#7c4dff]" : "text-indigo-700") : dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-                  Step {item.id}
-                </p>
-                <p className={`truncate text-sm font-medium ${active ? (dark ? "text-white" : "text-slate-900") : dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-                  {item.title}
-                </p>
-              </div>
-              {index < visibleSteps.length - 1 ? (
-                <div className={`mx-1 hidden h-px flex-1 sm:block ${dark ? "bg-white/[0.06]" : "bg-slate-200"}`} />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {displayError ? (
         <div
@@ -639,7 +641,7 @@ export default function CreateStudentWizard({
                   placeholder="03XX-XXXXXXX"
                 />
               </Field>
-              <Field label="Alternative Phone Number" dark={dark}>
+              <Field label="WhatsApp Number" dark={dark}>
                 <input
                   className={inputClass(dark)}
                   value={form.alternativePhone}
@@ -853,7 +855,7 @@ export default function CreateStudentWizard({
 
         {step === 5 ? (
           <div className="scrollbar-app h-full space-y-4 overflow-y-auto pr-1">
-            <h4 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>Fee Management</h4>
+            <h4 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>Fee Details</h4>
             <div className={assignCardClass}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Admission Fee (Rs.)" required dark={dark}>
@@ -905,8 +907,8 @@ export default function CreateStudentWizard({
                 <div className={`mt-4 space-y-4 rounded-xl border p-4 ${dark ? "border-white/[0.06] bg-[#161722]/80" : "border-indigo-100 bg-white"}`}>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <ScrollableSelect
-                      label="Number of Installments"
-                      placeholder="Select installments"
+                      label="Number of Months"
+                      placeholder="Select months"
                       value={form.installmentCount}
                       options={installmentOptions}
                       onChange={(value) => update({ installmentCount: value })}
@@ -926,11 +928,11 @@ export default function CreateStudentWizard({
                   <p className={`text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                     {Number(form.annualFee || 0) > 0 && form.installmentCount ? (
                       <>
-                        Annual fee of {formatCurrency(form.annualFee)} divided into {form.installmentCount} installment
+                        Annual fee of {formatCurrency(form.annualFee)} divided into {form.installmentCount} month
                         {Number(form.installmentCount) > 1 ? "s" : ""} = {formatCurrency(calculatedMonthlyFee)} per month.
                       </>
                     ) : (
-                      "Enter annual fee and select installments to calculate monthly fee."
+                      "Enter annual fee and select months to calculate monthly fee."
                     )}
                   </p>
                 </div>

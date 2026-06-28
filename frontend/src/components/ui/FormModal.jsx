@@ -28,6 +28,8 @@ export default function FormModal({
 
   onToggleTheme,
 
+  headerActions = null,
+
   onDemoReset,
 
   demoResetting = false,
@@ -149,6 +151,8 @@ export default function FormModal({
           </h3>
 
           <div className="flex items-center gap-2">
+
+            {headerActions ? <div className="flex items-center gap-2">{headerActions}</div> : null}
 
             {onDemoReset ? (
 
