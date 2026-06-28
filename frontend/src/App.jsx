@@ -30,7 +30,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    dispatch(fetchMe());
+    if (hadStoredSessionOnMount.current) {
+      dispatch(fetchMe());
+    }
   }, [dispatch]);
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function App() {
   }, [branchSection]);
 
   useLayoutEffect(() => {
+    if (!user) {
     if (!user) {
       setShowSplash(false);
       setSplashExiting(false);
@@ -71,6 +74,7 @@ export default function App() {
       window.clearTimeout(startExitTimer);
       window.clearTimeout(hideSplashTimer);
     };
+  }, [user, justLoggedIn, dispatch]);
   }, [user, justLoggedIn, dispatch]);
 
   useEffect(() => {

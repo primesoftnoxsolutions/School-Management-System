@@ -12,6 +12,7 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 5000),
   mongodbUri: process.env.MONGO_URI || process.env.MONGODB_URI || "",
+  frontendUrl: process.env.FRONTEND_URL || "",
   sessionSecret: process.env.SESSION_SECRET || "dev-session-secret-change-in-production",
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL || "",
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD || "",

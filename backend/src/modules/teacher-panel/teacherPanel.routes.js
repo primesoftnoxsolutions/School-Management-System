@@ -7,6 +7,7 @@ import {
   getClassDropdown,
   getClassStudents,
   getClasses,
+  getMyAttendanceSummary,
   getReports,
   postAcademicRecord,
   postAttendance,
@@ -33,6 +34,7 @@ router.get("/class-options", ...teacherOnly, getClassDropdown);
 router.get("/students", ...teacherOnly, getClassStudents);
 
 router.get("/attendance/summary", ...teacherOnly, getAttendanceSummary);
+router.get("/my-attendance/summary", ...teacherOnly, getMyAttendanceSummary);
 router.get("/attendance", ...teacherOnly, getAttendance);
 router.post("/attendance", ...teacherOnly, postAttendance);
 router.put("/attendance/:id", ...teacherOnly, putAttendance);
