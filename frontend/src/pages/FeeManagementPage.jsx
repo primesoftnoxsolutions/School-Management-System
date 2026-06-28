@@ -29,7 +29,7 @@ const formatClassSection = (className, section) => {
   return `${short}_${section || "A"}`;
 };
 
-export default function FeeManagementPage({ role }) {
+export default function FeeManagementPage({ role, title = "Fee Management", subtitle }) {
   const [classFilter, setClassFilter] = useState("");
   const [students, setStudents] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -173,8 +173,10 @@ export default function FeeManagementPage({ role }) {
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Fee Management"
-        subtitle={classFilter ? "Pending fees for selected class." : "Payment history — select a class to view pending fees."}
+        title={title}
+        subtitle={
+          subtitle || (classFilter ? "Pending fees for selected class." : "Payment history — select a class to view pending fees.")
+        }
         extra={
           <div className="flex flex-wrap items-center gap-2">
             <select

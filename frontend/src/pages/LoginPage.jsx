@@ -5,8 +5,29 @@ import { useAppTheme } from "../hooks/useAppTheme";
 
 const ROLE_OPTIONS = [
   { id: "SUPER_ADMIN", label: "Super Admin" },
-  { id: "TEACHER", label: "Teachers" },
+  { id: "ACCOUNTANT", label: "Finance Manager" },
+  { id: "TEACHER", label: "Teacher" },
+  { id: "STUDENT", label: "Student" },
 ];
+
+const ROLE_FORM_DEFAULTS = {
+  SUPER_ADMIN: {
+    email: "admin@schoolerp.local",
+    password: "Admin@123",
+  },
+  ACCOUNTANT: {
+    email: "finance@schoolerp.local",
+    password: "Finance@123",
+  },
+  TEACHER: {
+    email: "teacher@schoolerp.local",
+    password: "",
+  },
+  STUDENT: {
+    email: "",
+    password: "",
+  },
+};
 
 const SCHOOL_HIGHLIGHTS = [
   "Student records",
@@ -18,42 +39,87 @@ const SCHOOL_HIGHLIGHTS = [
 ];
 
 const PRINCIPAL = {
-  name: "Mr. Naseer Ahmad",
-  photo: "/principal-profile.jpg",
+  name: "Mr. Mudassir",
   quote: "Education is the most powerful weapon which you can use to change the world.",
 };
 
-function CrestLogo({ isDarkTheme }) {
-  const gold = isDarkTheme ? "#7c4dff" : "#d8a32a";
-  const fill = isDarkTheme ? "#161722" : "#062d4f";
+const HIGHLIGHT_ICONS = ["users", "fees", "calendar", "staff", "shield", "chart"];
+
+function getRoleDefaults(role) {
+  return ROLE_FORM_DEFAULTS[role] || ROLE_FORM_DEFAULTS.SUPER_ADMIN;
+}
+
+function SchoolLogo({ isDarkTheme, compact = false }) {
+  const sizeClass = compact ? "h-20 w-20" : "h-28 w-28";
 
   return (
-    <div className="relative flex h-24 w-24 items-center justify-center">
-      <div className="absolute inset-0 rounded-full border" style={{ borderColor: `${gold}4d` }} />
-      <svg viewBox="0 0 96 96" className="h-20 w-20" aria-hidden="true">
+    <div className={`relative flex ${sizeClass} items-center justify-center`}>
+      <img
+        src="/Logo%20Insaf%20Grammar%20High%20School.png"
+        alt="Insaf Grammar High School logo"
+        className="h-full w-full object-contain drop-shadow-[0_16px_30px_rgba(8,52,93,0.18)]"
+      />
+    </div>
+  );
+}
+
+function RoleIcon({ role }) {
+  if (role === "ACCOUNTANT") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
         <path
-          d="M48 9 77 21v21c0 21-12 36-29 45C31 78 19 63 19 42V21L48 9Z"
-          fill={fill}
-          stroke={gold}
-          strokeWidth="4.5"
-        />
-        <path
-          d="M31 58c7-6 15-6 17-5 2-1 10-1 17 5V36c-7-5-14-5-17-1-3-4-10-4-17 1v22Z"
+          d="M12 3a7 7 0 0 0-7 7v4a7 7 0 0 0 14 0v-4a7 7 0 0 0-7-7Zm-3 8h6m-6 3h4"
           fill="none"
-          stroke="#ffffff"
-          strokeWidth="3"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <path d="M48 22c5 5 5 10 0 15-5-5-5-10 0-15Z" fill={gold} />
-        <path d="M37 69h22" stroke={gold} strokeWidth="3" strokeLinecap="round" />
       </svg>
-      <span
-        className="absolute -bottom-1 rounded-full px-3 py-0.5 text-[10px] font-black tracking-[0.18em] text-white"
-        style={{ backgroundColor: gold }}
-      >
-        NIPS
-      </span>
-    </div>
+    );
+  }
+
+  if (role === "TEACHER") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
+        <path
+          d="M7 20v-2a5 5 0 0 1 5-5h0a5 5 0 0 1 5 5v2M9 8a3 3 0 1 0 6 0 3 3 0 0 0-6 0ZM17 8h5M19.5 5v6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (role === "STUDENT") {
+    return (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
+        <path
+          d="M12 3 3 8l9 5 9-5-9-5ZM5 12v4c0 2.2 3.1 4 7 4s7-1.8 7-4v-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
+      <path
+        d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Zm-2.5 9 1.7 1.7 3.5-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -97,20 +163,21 @@ function FeatureIcon({ type }) {
   );
 }
 
-const HIGHLIGHT_ICONS = ["users", "fees", "calendar", "staff", "shield", "chart"];
-
 export default function LoginPage({ exiting = false }) {
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
   const [role, setRole] = useState("SUPER_ADMIN");
-  const [form, setForm] = useState({
-    email: "admin@schoolerp.local",
-    password: "Admin@123",
-  });
+  const [form, setForm] = useState(() => ({ ...getRoleDefaults("SUPER_ADMIN") }));
   const [showPassword, setShowPassword] = useState(false);
   const [roleAnimKey, setRoleAnimKey] = useState(0);
   const [themeSpinning, setThemeSpinning] = useState(false);
   const { isDark: isDarkTheme, toggleTheme: toggleLoginTheme } = useAppTheme();
+
+  const accent = isDarkTheme ? "#7c4dff" : "#0b63d8";
+  const accentHover = isDarkTheme ? "#6a3df0" : "#0957bf";
+  const gold = isDarkTheme ? "#d7b14c" : "#d8a32a";
+  const inputBg = isDarkTheme ? "#1a1b26" : "#ffffff";
+  const panelBg = isDarkTheme ? "#161722" : "#0d1a2d";
 
   const handleLoginThemeToggle = () => {
     setThemeSpinning(true);
@@ -118,21 +185,17 @@ export default function LoginPage({ exiting = false }) {
     window.setTimeout(() => setThemeSpinning(false), 520);
   };
 
-  const accent = isDarkTheme ? "#7c4dff" : "#0b63d8";
-  const accentHover = isDarkTheme ? "#6a3df0" : "#0957bf";
-  const gold = isDarkTheme ? "#7c4dff" : "#d8a32a";
-  const inputBg = isDarkTheme ? "#1a1b26" : "#ffffff";
-  const panelBg = isDarkTheme ? "#161722" : "#0d1a2d";
-
   const onRoleChange = (nextRole) => {
     if (nextRole === role) return;
     setRoleAnimKey((key) => key + 1);
     setRole(nextRole);
+    setForm(getRoleDefaults(nextRole));
+    setShowPassword(false);
   };
 
   const onSubmit = async (event) => {
     event.preventDefault();
-    await dispatch(login(form));
+    await dispatch(login({ ...form, role }));
   };
 
   return (
@@ -142,16 +205,13 @@ export default function LoginPage({ exiting = false }) {
       } ${exiting ? "login-page-exit" : ""}`}
     >
       <div className={`login-theme-root flex min-h-screen w-full overflow-hidden ${isDarkTheme ? "bg-[#0b0c15]" : "bg-white"}`}>
-        {/* Left - School identity */}
         <aside
           className={`relative hidden w-[52%] overflow-hidden lg:block ${
             isDarkTheme ? "bg-[#0a1526] text-white" : "bg-[#f8fbff] text-[#08264a]"
           }`}
         >
           <div className={`absolute -left-24 -top-16 h-56 w-56 rounded-full ${isDarkTheme ? "bg-[#161722]" : "bg-[#dcecff]"}`} />
-          <div
-            className={`absolute -bottom-28 -left-28 h-64 w-64 rounded-full ${isDarkTheme ? "bg-[#7c4dff]/15" : "bg-[#dcecff]"}`}
-          />
+          <div className={`absolute -bottom-28 -left-28 h-64 w-64 rounded-full ${isDarkTheme ? "bg-[#7c4dff]/15" : "bg-[#dcecff]"}`} />
           <div
             className={`absolute left-8 top-6 h-20 w-20 bg-[radial-gradient(circle,currentColor_1.4px,transparent_1.4px)] [background-size:14px_14px] opacity-30 ${
               isDarkTheme ? "text-slate-500" : "text-slate-300"
@@ -166,20 +226,20 @@ export default function LoginPage({ exiting = false }) {
 
           <div className="relative z-10 mx-auto flex h-full max-w-3xl translate-x-8 flex-col justify-center px-10 py-8 xl:translate-x-12 xl:px-12">
             <div className="flex items-center gap-6">
-              <CrestLogo isDarkTheme={isDarkTheme} />
+              <SchoolLogo isDarkTheme={isDarkTheme} />
               <div>
                 <h1
                   className={`text-5xl font-semibold uppercase leading-none tracking-tight [font-family:'Montserrat','Aptos_Display','Segoe_UI',Arial,sans-serif] ${
                     isDarkTheme ? "text-white" : "text-[#092b57]"
                   }`}
                 >
-                  Naseer Ideal
+                  Insaf Grammar
                 </h1>
                 <p
                   className="mt-2 text-xl font-semibold uppercase tracking-[0.28em] [font-family:'Montserrat','Aptos_Display','Segoe_UI',Arial,sans-serif]"
                   style={{ color: gold }}
                 >
-                  Public School
+                  High School
                 </p>
                 <div className={`mt-3 flex items-center gap-3 text-sm ${isDarkTheme ? "text-slate-300" : "text-slate-600"}`}>
                   <span className="h-px w-10" style={{ backgroundColor: gold }} />
@@ -199,7 +259,7 @@ export default function LoginPage({ exiting = false }) {
               </h2>
               <div className="mt-1 h-1 w-14 rounded-full" style={{ backgroundColor: gold }} />
               <p className={`mt-4 max-w-xl text-base leading-8 ${isDarkTheme ? "text-slate-300" : "text-slate-700"}`}>
-                At Naseer Ideal Public School, we nurture young minds with quality
+                At Insaf Grammar High School, we nurture young minds with quality
                 education, strong values, and modern learning environments to help
                 every student shine and succeed in life.
               </p>
@@ -232,12 +292,9 @@ export default function LoginPage({ exiting = false }) {
                   }`}
                 >
                   <img
-                    src={PRINCIPAL.photo}
+                    src="/principal-profile.jpg"
                     alt={`${PRINCIPAL.name} profile`}
                     className="absolute inset-0 z-10 h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
                   />
                   <div className="absolute left-1/2 top-8 h-14 w-14 -translate-x-1/2 rounded-full bg-[#9b6b50]" />
                   <div className="absolute left-1/2 top-6 h-16 w-20 -translate-x-1/2 rounded-t-full bg-slate-900" />
@@ -253,7 +310,7 @@ export default function LoginPage({ exiting = false }) {
                   <div className="my-3 h-px w-28" style={{ backgroundColor: gold }} />
                   <p className={`text-base leading-7 ${isDarkTheme ? "text-slate-300" : "text-slate-700"}`}>
                     <span className="mr-2 text-3xl font-serif leading-none" style={{ color: gold }}>
-                      “
+                      &ldquo;
                     </span>
                     {PRINCIPAL.quote}
                   </p>
@@ -263,7 +320,6 @@ export default function LoginPage({ exiting = false }) {
           </div>
         </aside>
 
-        {/* Right - Login form */}
         <main
           className={`login-theme-root relative flex w-full flex-col items-center justify-center overflow-hidden px-6 py-10 sm:px-10 lg:w-[48%] ${
             isDarkTheme ? "bg-[#0b0c15]" : "bg-white"
@@ -327,13 +383,10 @@ export default function LoginPage({ exiting = false }) {
 
           <div className="relative z-10 w-full max-w-[500px]">
             <div className="mb-7 text-center lg:hidden">
-              <div
-                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-xl text-xl font-black text-white"
-                style={{ backgroundColor: accent }}
-              >
-                NI
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-white/90 shadow-[0_12px_28px_rgba(8,52,93,0.12)]">
+                <SchoolLogo isDarkTheme={isDarkTheme} compact />
               </div>
-              <h1 className={`text-2xl font-bold ${isDarkTheme ? "text-white" : "text-[#062d4f]"}`}>Naseer Ideal Public School</h1>
+              <h1 className={`text-2xl font-bold ${isDarkTheme ? "text-white" : "text-[#062d4f]"}`}>Insaf Grammar High School</h1>
             </div>
 
             <div className="mb-8 text-center">
@@ -346,7 +399,7 @@ export default function LoginPage({ exiting = false }) {
               <p className={`mb-2 text-base font-semibold ${isDarkTheme ? "text-slate-200" : "text-slate-800"}`}>Login as:</p>
               <div
                 key={`role-switch-${roleAnimKey}`}
-                className={`login-role-enter grid grid-cols-2 overflow-hidden rounded-2xl border ${
+                className={`login-role-enter grid grid-cols-2 overflow-hidden rounded-2xl border sm:grid-cols-4 ${
                   isDarkTheme ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
                 }`}
               >
@@ -366,28 +419,8 @@ export default function LoginPage({ exiting = false }) {
                       }`}
                       style={active ? { backgroundColor: accent } : isDarkTheme ? { backgroundColor: panelBg } : undefined}
                     >
-                      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
-                        {option.id === "SUPER_ADMIN" ? (
-                          <path
-                            d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3ZM9.5 12l1.7 1.7 3.5-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        ) : (
-                          <path
-                            d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20a5 5 0 0 1 10 0M16 8h5v6h-5zM14 17l3-3"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        )}
-                      </svg>
-                      {option.id === "SUPER_ADMIN" ? "Super Admin" : "Teacher"}
+                      <RoleIcon role={option.id} />
+                      {option.label}
                     </button>
                   );
                 })}
@@ -397,7 +430,7 @@ export default function LoginPage({ exiting = false }) {
             <form onSubmit={onSubmit} className="space-y-5" key={`login-form-${role}-${roleAnimKey}`}>
               <div className="login-field-enter login-field-enter-delay-1">
                 <label htmlFor="email" className={`mb-2 block text-base font-semibold ${isDarkTheme ? "text-slate-200" : "text-slate-800"}`}>
-                  Email ID
+                  {role === "STUDENT" ? "Login ID" : "Email ID"}
                 </label>
                 <div
                   className={`flex items-center gap-3 rounded-2xl border px-5 py-4 transition focus-within:ring-4 ${
@@ -410,7 +443,7 @@ export default function LoginPage({ exiting = false }) {
                   </svg>
                   <input
                     id="email"
-                    type="email"
+                    type={role === "STUDENT" ? "text" : "email"}
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     style={{
@@ -421,7 +454,7 @@ export default function LoginPage({ exiting = false }) {
                     className={`login-auth-input w-full bg-transparent text-lg font-semibold outline-none placeholder:text-slate-500 ${
                       isDarkTheme ? "text-slate-100" : "text-slate-950"
                     }`}
-                    placeholder="Enter your email"
+                    placeholder={role === "STUDENT" ? "Enter student login ID" : "Enter your email"}
                     required
                   />
                 </div>
@@ -479,12 +512,7 @@ export default function LoginPage({ exiting = false }) {
 
               <div className="flex items-center justify-between text-base">
                 <label className={`flex items-center gap-2 ${isDarkTheme ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 rounded border-slate-300"
-                    style={{ accentColor: accent }}
-                  />
+                  <input type="checkbox" defaultChecked className="h-4 w-4 rounded border-slate-300" style={{ accentColor: accent }} />
                   Remember me
                 </label>
                 <button type="button" className="font-medium" style={{ color: accent }}>
@@ -503,8 +531,12 @@ export default function LoginPage({ exiting = false }) {
                 disabled={loading}
                 className="mt-1 flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-4 text-base font-bold uppercase tracking-wide text-white transition disabled:opacity-60"
                 style={{ backgroundColor: accent, boxShadow: `0 12px 22px ${isDarkTheme ? "rgba(124,77,255,0.22)" : "rgba(11,99,216,0.22)"}` }}
-                onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = accentHover; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = accent; }}
+                onMouseEnter={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = accentHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = accent;
+                }}
               >
                 {loading ? (
                   <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/35 border-t-white" />
@@ -549,7 +581,13 @@ export default function LoginPage({ exiting = false }) {
 
             {import.meta.env.DEV ? (
               <p className={`mt-4 text-center text-sm ${isDarkTheme ? "text-[#9e9e9e]" : "text-slate-600"}`}>
-                Local dev: admin@schoolerp.local / Admin@123
+                {role === "SUPER_ADMIN"
+                  ? "Local dev: admin@schoolerp.local / Admin@123"
+                  : role === "ACCOUNTANT"
+                    ? "Finance Manager: finance@schoolerp.local / Finance@123"
+                  : role === "TEACHER"
+                    ? "Teacher accounts are created from Teacher Management."
+                    : "Use the student login ID and password from Student Management."}
               </p>
             ) : null}
           </div>

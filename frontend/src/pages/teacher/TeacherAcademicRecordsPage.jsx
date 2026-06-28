@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api/client";
+import AppointmentLetterModal from "../../components/teachers/AppointmentLetterModal";
 
 const emptyForm = {
   studentId: "",
@@ -13,7 +14,7 @@ const emptyForm = {
   remarks: "",
 };
 
-export default function TeacherAcademicRecordsPage() {
+export default function TeacherAcademicRecordsPage({ dark = false }) {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [items, setItems] = useState([]);
@@ -25,6 +26,7 @@ export default function TeacherAcademicRecordsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalPages: 1, total: 0 });
+  const [showAppointmentLetter, setShowAppointmentLetter] = useState(false);
 
   const loadClasses = async () => {
     try {
@@ -141,18 +143,45 @@ export default function TeacherAcademicRecordsPage() {
     }
   };
 
+  const cardClass = dark ? "rounded-2xl border border-white/[0.06] bg-[#161722]" : "ref-card";
+  const inputClass = dark
+    ? "w-full rounded-xl border border-white/[0.08] bg-[#1a1b26] px-3 py-2.5 text-sm text-white outline-none focus:border-[#7c4dff]/50"
+    : "ref-input";
+  const tableHeadClass = dark ? "bg-[#1a1b26] text-left text-[#9e9e9e]" : "bg-slate-50 text-left text-slate-500";
+  const tableCellClass = dark ? "text-white" : "text-slate-700";
+  const mutedClass = dark ? "text-[#9e9e9e]" : "text-slate-500";
+  const borderClass = dark ? "border-white/[0.06]" : "border-slate-100";
+  const primaryBtnClass = dark
+    ? "rounded-xl bg-[#7c4dff] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#875cff] disabled:opacity-60"
+    : "ref-btn-primary";
+  const outlineBtnClass = dark
+    ? "rounded-xl border border-white/[0.08] bg-transparent px-4 py-2.5 text-sm font-medium text-[#d7d2ff] hover:bg-white/[0.04]"
+    : "ref-btn-outline";
+  const dangerBtnClass = dark
+    ? "rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-400 hover:bg-rose-500/15"
+    : "ref-btn-danger";
+
   return (
     <section className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Academic Records</h2>
-        <p className="text-sm text-slate-500">Add, edit and manage student marks and grades.</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className={`text-2xl font-bold ${dark ? "text-white" : "text-slate-900"}`}>Academic</h2>
+          <p className={`text-sm ${mutedClass}`}>Add, edit and manage student marks and grades.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAppointmentLetter(true)}
+          className={primaryBtnClass}
+        >
+          Appointment Letter
+        </button>
       </div>
 
-      {error ? <p className="text-sm text-rose-600">{error}</p> : null}
+      {error ? <p className={`text-sm ${dark ? "text-[#e91e63]" : "text-rose-600"}`}>{error}</p> : null}
 
-      <form onSubmit={onSubmit} className="ref-card grid grid-cols-1 gap-3 p-5 md:grid-cols-3">
+      <form onSubmit={onSubmit} className={`${cardClass} grid grid-cols-1 gap-3 p-5 md:grid-cols-3`}>
         <select
-          className="ref-input"
+          className={inputClass}
           value={classOptions.find((c) => c.className === form.className && c.section === form.section)?._id || ""}
           onChange={(e) => onClassSelect(e.target.value)}
           required={!editId}
@@ -165,7 +194,7 @@ export default function TeacherAcademicRecordsPage() {
           ))}
         </select>
         <select
-          className="ref-input"
+          className={inputClass}
           value={form.studentId}
           onChange={(e) => setForm({ ...form, studentId: e.target.value })}
           required={!editId}
@@ -179,14 +208,14 @@ export default function TeacherAcademicRecordsPage() {
           ))}
         </select>
         <input
-          className="ref-input"
+          className={inputClass}
           placeholder="Exam type (Midterm, Final...)"
           value={form.examType}
           onChange={(e) => setForm({ ...form, examType: e.target.value })}
           required
         />
         <input
-          className="ref-input"
+          className={inputClass}
           placeholder="Subject"
           value={form.subject}
           onChange={(e) => setForm({ ...form, subject: e.target.value })}
@@ -194,7 +223,7 @@ export default function TeacherAcademicRecordsPage() {
         />
         <input
           type="number"
-          className="ref-input"
+          className={inputClass}
           placeholder="Marks"
           value={form.marks}
           onChange={(e) => setForm({ ...form, marks: e.target.value })}
@@ -203,7 +232,7 @@ export default function TeacherAcademicRecordsPage() {
         />
         <input
           type="number"
-          className="ref-input"
+          className={inputClass}
           placeholder="Max marks"
           value={form.maxMarks}
           onChange={(e) => setForm({ ...form, maxMarks: e.target.value })}
@@ -211,45 +240,47 @@ export default function TeacherAcademicRecordsPage() {
           min="1"
         />
         <input
-          className="ref-input"
+          className={inputClass}
           placeholder="Grade (A, B, C...)"
           value={form.grade}
           onChange={(e) => setForm({ ...form, grade: e.target.value })}
         />
         <input
-          className="ref-input md:col-span-2"
+          className={`${inputClass} md:col-span-2`}
           placeholder="Remarks"
           value={form.remarks}
           onChange={(e) => setForm({ ...form, remarks: e.target.value })}
         />
         <div className="flex gap-2 md:col-span-3">
-          <button type="submit" className="ref-btn-primary" disabled={saving}>
+          <button type="submit" className={primaryBtnClass} disabled={saving}>
             {saving ? "Saving..." : editId ? "Update Record" : "Add Record"}
           </button>
           {editId ? (
-            <button type="button" className="ref-btn-outline" onClick={resetForm}>
+            <button type="button" className={outlineBtnClass} onClick={resetForm}>
               Cancel
             </button>
           ) : null}
         </div>
       </form>
 
-      <div className="ref-card overflow-hidden p-0">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-4">
-          <h3 className="text-base font-semibold text-slate-800">Records ({pagination.total})</h3>
+      <div className={`${cardClass} overflow-hidden p-0`}>
+        <div className={`flex flex-wrap items-center gap-3 border-b px-5 py-4 ${borderClass}`}>
+          <h3 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-800"}`}>
+            Records ({pagination.total})
+          </h3>
           <input
-            className="ref-input ml-auto w-full max-w-xs"
+            className={`${inputClass} ml-auto w-full max-w-xs`}
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && load(1, search)}
           />
-          <button type="button" className="ref-btn-outline" onClick={() => load(1, search)}>
+          <button type="button" className={outlineBtnClass} onClick={() => load(1, search)}>
             Search
           </button>
         </div>
         <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left text-slate-500">
+          <thead className={tableHeadClass}>
             <tr>
               <th className="px-5 py-3 font-medium">Student</th>
               <th className="px-5 py-3 font-medium">Subject</th>
@@ -261,29 +292,29 @@ export default function TeacherAcademicRecordsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">
+                <td colSpan={5} className={`px-5 py-6 ${mutedClass}`}>
                   Loading...
                 </td>
               </tr>
             ) : items.length ? (
               items.map((item) => (
-                <tr key={item._id} className="border-t border-slate-100">
-                  <td className="px-5 py-3 text-slate-700">
+                <tr key={item._id} className={`border-t ${borderClass}`}>
+                  <td className={`px-5 py-3 ${tableCellClass}`}>
                     {item.studentId
                       ? `${item.studentId.firstName} ${item.studentId.lastName}`
                       : "-"}
                   </td>
-                  <td className="px-5 py-3 text-slate-700">{item.subject}</td>
-                  <td className="px-5 py-3 text-slate-700">{item.examType}</td>
-                  <td className="px-5 py-3 text-slate-700">
+                  <td className={`px-5 py-3 ${tableCellClass}`}>{item.subject}</td>
+                  <td className={`px-5 py-3 ${tableCellClass}`}>{item.examType}</td>
+                  <td className={`px-5 py-3 ${tableCellClass}`}>
                     {item.marks}/{item.maxMarks} {item.grade ? `(${item.grade})` : ""}
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex gap-2">
-                      <button type="button" className="ref-btn-outline" onClick={() => onEdit(item)}>
+                      <button type="button" className={outlineBtnClass} onClick={() => onEdit(item)}>
                         Edit
                       </button>
-                      <button type="button" className="ref-btn-danger" onClick={() => onDelete(item._id)}>
+                      <button type="button" className={dangerBtnClass} onClick={() => onDelete(item._id)}>
                         Delete
                       </button>
                     </div>
@@ -292,7 +323,7 @@ export default function TeacherAcademicRecordsPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="px-5 py-6 text-slate-500">
+                <td colSpan={5} className={`px-5 py-6 ${mutedClass}`}>
                   No academic records yet.
                 </td>
               </tr>
@@ -300,6 +331,12 @@ export default function TeacherAcademicRecordsPage() {
           </tbody>
         </table>
       </div>
+
+      <AppointmentLetterModal
+        open={showAppointmentLetter}
+        onClose={() => setShowAppointmentLetter(false)}
+        dark={dark}
+      />
     </section>
   );
 }

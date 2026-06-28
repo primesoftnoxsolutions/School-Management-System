@@ -45,10 +45,11 @@ function buildCalendarCells(year, month) {
   return cells;
 }
 
-function getPrimaryAssignment(assignedClasses = []) {
+function getPrimaryAssignment(assignedClasses = [], branchSection = "") {
   if (!assignedClasses.length) return null;
 
   const groups = new Map();
+  const selectedBranch = branchSection === "Girls" || branchSection === "Boys" ? branchSection : "";
   assignedClasses.forEach((item) => {
     const section = item.section || "A";
     const key = `${item.className}|${section}`;
@@ -63,7 +64,18 @@ function getPrimaryAssignment(assignedClasses = []) {
     return SECTION_OPTIONS.indexOf(a.section) - SECTION_OPTIONS.indexOf(b.section);
   });
 
-  return sorted[0] || null;
+  if (!selectedBranch) return sorted[0] || null;
+
+  const branchMatch = sorted.find((item) =>
+    assignedClasses.some(
+      (row) =>
+        row.className === item.className &&
+        (row.section || "A") === item.section &&
+        (row.branch === "Boys" ? "Boys" : "Girls") === selectedBranch
+    )
+  );
+
+  return branchMatch || sorted[0] || null;
 }
 
 function normalizeCalendarStatus(status) {
@@ -127,7 +139,7 @@ function LegendItem({ label, className, dark }) {
   );
 }
 
-export default function TeacherActivityMonitor({ dark = false, onToggleTheme, refreshKey = 0 }) {
+export default function TeacherActivityMonitor({ dark = false, onToggleTheme, refreshKey = 0, branchSection = "" }) {
   const now = new Date();
   const [allTeachers, setAllTeachers] = useState([]);
   const [teacherId, setTeacherId] = useState("");
@@ -145,6 +157,17 @@ export default function TeacherActivityMonitor({ dark = false, onToggleTheme, re
   const cells = useMemo(() => buildCalendarCells(viewYear, viewMonth), [viewYear, viewMonth]);
   const today = todayKey();
   const selectedTeacher = allTeachers.find((teacher) => teacher._id === teacherId);
+  const selectedBranch = branchSection === "Girls" || branchSection === "Boys" ? branchSection : "";
+
+  const teacherMatchesBranch = useCallback(
+    (teacher) => {
+      const assignments = teacher.assignedClasses || [];
+      if (!selectedBranch) return true;
+      if (!assignments.length) return true;
+      return assignments.some((item) => (item.branch === "Boys" ? "Boys" : "Girls") === selectedBranch);
+    },
+    [selectedBranch]
+  );
 
   const loadTeachers = useCallback(async () => {
     setLoadingTeachers(true);
@@ -167,12 +190,13 @@ export default function TeacherActivityMonitor({ dark = false, onToggleTheme, re
   const filteredTeachers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return allTeachers.filter((teacher) => {
+      const assignments = teacher.assignedClasses || [];
       if (className) {
-        const hasClass = (teacher.assignedClasses || []).some((item) => item.className === className);
+        const hasClass = assignments.some((item) => item.className === className);
         if (!hasClass) return false;
       }
       if (section) {
-        const hasSection = (teacher.assignedClasses || []).some(
+        const hasSection = assignments.some(
           (item) => (item.section || "A") === section && (!className || item.className === className)
         );
         if (!hasSection) return false;
@@ -204,6 +228,13 @@ export default function TeacherActivityMonitor({ dark = false, onToggleTheme, re
     () => [{ value: "", label: "All Sections" }, ...SECTION_OPTIONS.map((item) => ({ value: item, label: `Section ${item}` }))],
     []
   );
+
+  useEffect(() => {
+    if (!teacherId) return;
+    if (!allTeachers.some((teacher) => teacher._id === teacherId)) {
+      setTeacherId("");
+    }
+  }, [allTeachers, teacherId]);
 
   useEffect(() => {
     if (!teacherId) return;
@@ -259,7 +290,7 @@ export default function TeacherActivityMonitor({ dark = false, onToggleTheme, re
     if (!nextTeacherId) return;
 
     const teacher = allTeachers.find((item) => item._id === nextTeacherId);
-    const primary = getPrimaryAssignment(teacher?.assignedClasses);
+    const primary = getPrimaryAssignment(teacher?.assignedClasses, selectedBranch);
     if (primary) {
       setClassName(primary.className);
       setSection(primary.section);

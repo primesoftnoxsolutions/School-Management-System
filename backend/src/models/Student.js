@@ -4,6 +4,8 @@ import { baseFields } from "./baseFields.js";
 const studentSchema = new mongoose.Schema(
   {
     admissionNo: { type: String, required: true, unique: true, index: true },
+    loginId: { type: String, default: "", trim: true, index: true },
+    loginPassword: { type: String, default: "", trim: true },
     rollNumber: { type: String, default: "", trim: true, index: true },
     firstName: { type: String, required: true, trim: true, index: true },
     lastName: { type: String, required: true, trim: true },

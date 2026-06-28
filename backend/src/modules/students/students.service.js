@@ -27,6 +27,51 @@ const generateAdmissionNo = () => {
   return `REG-${year}-${suffix}`;
 };
 
+const generateStudentLoginId = (data) => {
+  const fullName = `${String(data.firstName || "")}${String(data.lastName || "")}`
+    .replace(/[^a-z]/gi, "")
+    .toLowerCase();
+  if (!fullName) return "student@gmail.com";
+  return `${fullName}@gmail.com`;
+};
+
+const generateStudentLoginPassword = (data) => {
+  const lettersPool = `${String(data.firstName || "")}${String(data.lastName || "")}`
+    .replace(/[^a-z]/gi, "")
+    .toUpperCase() || "STUDENT";
+  const dob = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+  const dobDigits = dob && !Number.isNaN(dob.getTime())
+    ? `${dob.getFullYear()}${String(dob.getMonth() + 1).padStart(2, "0")}${String(dob.getDate()).padStart(2, "0")}`
+    : "";
+  const digitsPool =
+    `${String(data.admissionNo || "")}${String(data.rollNumber || "")}${String(data.cnicBForm || "")}${dobDigits}`
+      .replace(/\D/g, "") || `${Date.now()}`;
+  const byPool = "BY";
+  const glPool = "GL";
+
+  let hash = 0;
+  const seed = `${lettersPool}|${digitsPool}|${String(data.admissionNo || "")}|BY|GL`;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 33 + seed.charCodeAt(i)) >>> 0;
+  }
+
+  const pick = (pool, offset = 0) => pool[(hash + offset) % pool.length];
+  const passwordParts = [
+    pick(lettersPool, 0),
+    pick(lettersPool, 3),
+    pick(digitsPool, 1),
+    pick(digitsPool, 5),
+    pick(lettersPool, 7),
+    pick(lettersPool, 11),
+    pick(digitsPool, 13),
+    pick(digitsPool, 17),
+    pick(byPool, hash % byPool.length),
+    pick(glPool, (hash + 1) % glPool.length),
+  ];
+
+  return passwordParts.join("").slice(0, 10);
+};
+
 export const getNextRollNumber = async (className, section = "A") => {
   if (!className) throw new ApiError(400, "className is required");
 
@@ -179,6 +224,7 @@ const normalizePayload = (payload) => {
     section: (payload.section || "A").trim(),
     address: payload.address?.trim() || "",
     admissionNo: payload.admissionNo?.trim() || generateAdmissionNo(),
+    loginId: payload.loginId?.trim() || "",
     admissionDate: payload.admissionDate ? new Date(payload.admissionDate) : new Date(),
     studentPhotoUrl: payload.studentPhotoUrl || null,
     phoneNumber: payload.phoneNumber?.trim() || "",
@@ -201,6 +247,7 @@ const normalizePayload = (payload) => {
     monthlyFee: Math.max(0, Number(payload.monthlyFee || 0)),
     installmentCount: Math.max(0, Number(payload.installmentCount || 0)),
     useInstallments: Boolean(payload.useInstallments),
+    loginPassword: payload.loginPassword?.trim() || "",
   };
 };
 
@@ -245,7 +292,12 @@ export const listStudents = async (query) => {
   if (searchFilter) Object.assign(filter, searchFilter);
 
   const [items, total] = await Promise.all([
-    Student.find(filter).sort({ className: 1, rollNumber: 1, createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Student.find(filter)
+      .select("-loginPassword")
+      .sort({ className: 1, rollNumber: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     Student.countDocuments(filter),
   ]);
 
@@ -275,9 +327,13 @@ export const createStudent = async (payload, actorId) => {
   }
 
   const { useInstallments, ...studentData } = data;
+  const loginId = studentData.loginId || generateStudentLoginId(studentData);
+  const loginPassword = studentData.loginPassword || generateStudentLoginPassword(studentData);
 
   const student = await Student.create({
     ...studentData,
+    loginId,
+    loginPassword,
     createdBy: actorId,
     updatedBy: actorId,
   });
@@ -349,6 +405,17 @@ export const updateStudent = async (id, payload, actorId) => {
 
   if (payload.admissionDate !== undefined) {
     student.admissionDate = new Date(payload.admissionDate);
+  }
+
+  if (
+    payload.firstName !== undefined ||
+    payload.lastName !== undefined ||
+    payload.fatherName !== undefined ||
+    payload.guardianName !== undefined ||
+    payload.admissionNo !== undefined ||
+    payload.rollNumber !== undefined
+  ) {
+    student.loginId = generateStudentLoginId(student);
   }
 
   if (student.rollNumber) {

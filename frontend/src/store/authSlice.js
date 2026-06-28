@@ -9,6 +9,9 @@ const initialState = {
   justLoggedIn: false,
 };
 
+// Legacy JWT auth stored tokens in localStorage; session auth no longer uses them.
+localStorage.removeItem("accessToken");
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const login = createAsyncThunk("auth/login", async (payload, { rejectWithValue }) => {
@@ -50,9 +53,9 @@ const authSlice = createSlice({
   reducers: {
     logout(state) {
       state.user = null;
-      state.accessToken = null;
       state.justLoggedIn = false;
-      localStorage.removeItem("accessToken");
+      state.sessionChecked = true;
+      sessionStorage.removeItem("hadSession");
     },
     clearJustLoggedIn(state) {
       state.justLoggedIn = false;
@@ -67,9 +70,9 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
         state.justLoggedIn = true;
-        localStorage.setItem("accessToken", action.payload.accessToken);
+        state.sessionChecked = true;
+        sessionStorage.setItem("hadSession", "1");
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -82,6 +85,11 @@ const authSlice = createSlice({
         state.loading = false;
         state.sessionChecked = true;
         state.user = action.payload;
+        if (action.payload) {
+          sessionStorage.setItem("hadSession", "1");
+        } else {
+          sessionStorage.removeItem("hadSession");
+        }
       })
       .addCase(fetchMe.rejected, (state) => {
         state.loading = false;
@@ -91,6 +99,8 @@ const authSlice = createSlice({
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
         state.error = null;
+        state.sessionChecked = true;
+        sessionStorage.removeItem("hadSession");
       });
   },
 });

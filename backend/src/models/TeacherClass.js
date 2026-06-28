@@ -10,6 +10,7 @@ const teacherClassSchema = new mongoose.Schema(
       index: true,
     },
     className: { type: String, required: true, trim: true, index: true },
+    branch: { type: String, enum: ["Girls", "Boys"], default: "Girls", trim: true, index: true },
     section: { type: String, default: "A", trim: true },
     subject: { type: String, required: true, trim: true },
     roomNo: { type: String, default: "", trim: true },

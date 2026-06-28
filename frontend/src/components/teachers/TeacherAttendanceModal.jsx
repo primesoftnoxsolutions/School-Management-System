@@ -86,7 +86,7 @@ function AttendanceActionButton({ label, tone, active, disabled, onClick, dark }
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${tones[tone]}`}
+      className={`inline-flex shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${tones[tone]}`}
     >
       {label}
     </button>
@@ -291,8 +291,8 @@ export default function TeacherAttendanceModal({
                     <td className={`px-4 py-3 ${dark ? "text-[#9e9e9e]" : "text-slate-600"}`}>{row.className}</td>
                     <td className={`px-4 py-3 ${dark ? "text-[#9e9e9e]" : "text-slate-600"}`}>{row.section}</td>
                     <td className={`px-4 py-3 ${dark ? "text-[#9e9e9e]" : "text-slate-600"}`}>{row.subjects}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap justify-end gap-2">
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-nowrap justify-end gap-2 overflow-x-auto">
                         <AttendanceActionButton
                           label="Present"
                           tone="present"

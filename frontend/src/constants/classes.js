@@ -19,6 +19,8 @@ export const CLASS_OPTIONS = [
 
 export const SECTION_OPTIONS = ["A", "B", "C", "D"];
 
+export const BRANCH_OPTIONS = ["Girls", "Boys"];
+
 export const getClassSectionOptions = () =>
   CLASS_OPTIONS.flatMap((className) =>
     SECTION_OPTIONS.map((section) => ({

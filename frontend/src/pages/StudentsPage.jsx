@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../services/api/client";
 import FormModal from "../components/ui/FormModal";
 import PageHeader from "../components/ui/PageHeader";
@@ -56,6 +56,16 @@ function IconEye() {
   );
 }
 
+function IconKey() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.5 8a3.5 3.5 0 11-6.999.001A3.5 3.5 0 0115.5 8z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 11.5l-7 7h-2v-2l7-7" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 7.5L18 6l2 2-1.5 1.5" />
+    </svg>
+  );
+}
+
 function StudentAvatar({ student, size = "md" }) {
   const dim = size === "lg" ? "h-20 w-20 text-xl" : "h-10 w-10 text-sm";
   const initials = `${student?.firstName || ""}${student?.lastName || ""}`
@@ -84,6 +94,49 @@ function StudentAvatar({ student, size = "md" }) {
   );
 }
 
+function generateStudentLoginPassword(student) {
+  const lettersPool =
+    `${student?.firstName || ""}${student?.lastName || ""}`.replace(/[^a-z]/gi, "").toUpperCase() || "STUDENT";
+  const dobValue = student?.dateOfBirth ? new Date(student.dateOfBirth) : null;
+  const dobDigits =
+    dobValue && !Number.isNaN(dobValue.getTime())
+      ? `${dobValue.getFullYear()}${String(dobValue.getMonth() + 1).padStart(2, "0")}${String(dobValue.getDate()).padStart(2, "0")}`
+      : "";
+  const digitsPool =
+    `${student?.admissionNo || ""}${student?.rollNumber || ""}${student?.cnicBForm || ""}${dobDigits}`
+      .replace(/\D/g, "") || `${Date.now()}`;
+  const byPool = "BY";
+  const glPool = "GL";
+  const seed = `${lettersPool}|${digitsPool}|${student?.admissionNo || ""}|BY|GL`;
+
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 33 + seed.charCodeAt(i)) >>> 0;
+  }
+
+  const pick = (pool, offset = 0) => pool[(hash + offset) % pool.length];
+  return [
+    pick(lettersPool, 0),
+    pick(lettersPool, 3),
+    pick(digitsPool, 1),
+    pick(digitsPool, 5),
+    pick(lettersPool, 7),
+    pick(lettersPool, 11),
+    pick(digitsPool, 13),
+    pick(digitsPool, 17),
+    pick(byPool, hash % byPool.length),
+    pick(glPool, (hash + 1) % glPool.length),
+  ]
+    .join("")
+    .slice(0, 10);
+}
+
+function generateStudentLoginId(student) {
+  const fullName = `${student?.firstName || ""}${student?.lastName || ""}`.replace(/[^a-z]/gi, "").toLowerCase();
+  if (!fullName) return "student@gmail.com";
+  return `${fullName}@gmail.com`;
+}
+
 export default function StudentsPage({ role, dark = false, onToggleTheme }) {
   const canManage = role === "SUPER_ADMIN";
   const [editId, setEditId] = useState(null);
@@ -105,6 +158,11 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
   const [editWizardKey, setEditWizardKey] = useState(0);
   const [modalStudentName, setModalStudentName] = useState("");
   const [activityRefreshKey, setActivityRefreshKey] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginStudent, setLoginStudent] = useState(null);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const studentImportInputRef = useRef(null);
 
   useEffect(() => {
     loadStudents(1, "", "");
@@ -166,6 +224,26 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
     } catch {
       setProfileStudent(item);
     }
+  };
+
+  const openLoginDetails = async (item) => {
+    setShowLoginModal(true);
+    setLoginLoading(true);
+    setLoginStudent(null);
+    try {
+      const { data } = await api.get(`/students/${item._id}`);
+      setLoginStudent(data.data || item);
+    } catch {
+      setLoginStudent(item);
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const closeLoginModal = () => {
+    setShowLoginModal(false);
+    setLoginStudent(null);
+    setLoginLoading(false);
   };
 
   const onCreateStudent = async (wizardForm) => {
@@ -249,6 +327,111 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
 
   const refreshActivityMonitor = () => setActivityRefreshKey((key) => key + 1);
 
+  const parseKeyValueText = (text) => {
+    const result = {};
+    const lines = String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    lines.forEach((line) => {
+      if (line.startsWith("#")) return;
+      const separatorIndex = line.indexOf(":") >= 0 ? line.indexOf(":") : line.indexOf("=");
+      if (separatorIndex === -1) return;
+      const key = line.slice(0, separatorIndex).trim();
+      const value = line.slice(separatorIndex + 1).trim();
+      if (!key) return;
+      result[key] = value;
+    });
+
+    return result;
+  };
+
+  const normalizeImportedStudentForm = (raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      throw new Error("Each student entry must be a JSON object.");
+    }
+
+    const previousResults = Array.isArray(raw.previousResults)
+      ? raw.previousResults.map((row) => ({
+          previousClass: row?.previousClass || "",
+          resultGrade: row?.resultGrade || "",
+          percentage: row?.percentage || "",
+          documentUrl: row?.documentUrl || "",
+        }))
+      : [];
+    const subjects = Array.isArray(raw.subjects)
+      ? raw.subjects
+      : typeof raw.subjects === "string"
+        ? raw.subjects.split(",").map((item) => item.trim()).filter(Boolean)
+        : [];
+
+    return {
+      ...initialCreateStudentForm,
+      registrationNo: raw.registrationNo || raw.admissionNo || raw.studentId || createRegistrationNumber(),
+      fullName: raw.fullName || raw.name || "",
+      cnicBForm: raw.cnicBForm || raw.cnic || "",
+      address: raw.address || "",
+      phoneNumber: raw.phoneNumber || raw.mobile || "",
+      gender: raw.gender || "MALE",
+      dateOfBirth: raw.dateOfBirth || "",
+      fatherName: raw.fatherName || raw.guardianName || "",
+      fatherCnic: raw.fatherCnic || "",
+      guardianPhone: raw.guardianPhone || raw.phoneNumber || "",
+      alternativePhone: raw.alternativePhone || "",
+      fatherOccupation: raw.fatherOccupation || "",
+      previousResults: previousResults.length ? previousResults : initialCreateStudentForm.previousResults,
+      schoolLeavingCertificate: raw.schoolLeavingCertificate || "",
+      characterCertificate: raw.characterCertificate || "",
+      className: raw.className || "",
+      section: raw.section || "A",
+      rollNumber: raw.rollNumber || "",
+      subjects,
+      subjectPool: Array.isArray(raw.subjectPool) && raw.subjectPool.length ? raw.subjectPool : [...new Set(subjects)],
+      admissionFee: raw.admissionFee ?? "",
+      annualFee: raw.annualFee ?? "",
+      useInstallments: Boolean(raw.useInstallments),
+      installmentCount: raw.installmentCount ? String(raw.installmentCount) : "1",
+    };
+  };
+
+  const importStudentsFromFile = async (file) => {
+    if (!file) return;
+
+    setImporting(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const text = await file.text();
+      const trimmed = String(text || "").trim();
+      const parsed = trimmed.startsWith("{") || trimmed.startsWith("[") ? JSON.parse(trimmed) : parseKeyValueText(trimmed);
+      const entries = Array.isArray(parsed) ? parsed : Array.isArray(parsed.students) ? parsed.students : [parsed];
+
+      if (!entries.length) {
+        throw new Error("Import file is empty.");
+      }
+
+      let imported = 0;
+      for (const entry of entries) {
+        const form = normalizeImportedStudentForm(entry);
+        const payload = buildStudentPayload(form);
+        // eslint-disable-next-line no-await-in-loop
+        await api.post("/students", payload);
+        imported += 1;
+      }
+
+      setSuccess(imported === 1 ? "Student imported successfully." : `${imported} students imported successfully.`);
+      await loadStudents(1, search, statusFilter);
+      refreshActivityMonitor();
+    } catch (err) {
+      setError(err.message || err.response?.data?.message || "Failed to import students");
+    } finally {
+      setImporting(false);
+      if (studentImportInputRef.current) studentImportInputRef.current.value = "";
+    }
+  };
+
   const cardClass = dark
     ? "overflow-hidden rounded-2xl border border-white/[0.06] bg-[#161722]"
     : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm";
@@ -262,16 +445,29 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
         onAction={canManage ? openCreateModal : null}
         afterAction={
           canManage ? (
-            <button
-              type="button"
-              onClick={() => setShowRemoveModal(true)}
-              className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
-            >
-              <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 11h-6" />
-              </svg>
-              Student Remove at School
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => studentImportInputRef.current?.click()}
+                disabled={importing}
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16" />
+                </svg>
+                {importing ? "Importing..." : "Import Students"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRemoveModal(true)}
+                className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 hover:bg-rose-100"
+              >
+                <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 11h-6" />
+                </svg>
+                Student Remove at School
+              </button>
+            </>
           ) : null
         }
         extra={
@@ -283,6 +479,14 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
             View Students Profiles
           </button>
         }
+      />
+
+      <input
+        ref={studentImportInputRef}
+        type="file"
+        accept=".txt,.json,text/plain,application/json"
+        className="hidden"
+        onChange={(event) => importStudentsFromFile(event.target.files?.[0])}
       />
 
       {error && !showStudentModal && !showRemoveModal ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -380,8 +584,14 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
                             <button type="button" className="ref-btn-outline text-xs" onClick={() => onEdit(item)}>
                               Edit
                             </button>
-                            <button type="button" className="ref-btn-danger text-xs" onClick={() => onDelete(item._id)}>
-                              Delete
+                            <button
+                              type="button"
+                              title="View student login details"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                              onClick={() => openLoginDetails(item)}
+                            >
+                              <IconKey />
+                              Login Details
                             </button>
                           </>
                         ) : null}
@@ -475,6 +685,69 @@ export default function StudentsPage({ role, dark = false, onToggleTheme }) {
               refreshActivityMonitor();
             }}
           />
+        ) : null}
+      </FormModal>
+
+      <FormModal
+        open={showLoginModal}
+        title="Student Login Details"
+        subtitle={loginStudent ? `${loginStudent.firstName || ""} ${loginStudent.lastName || ""}`.trim() : ""}
+        onClose={closeLoginModal}
+        wide
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+      >
+        {loginLoading ? (
+          <div className={`rounded-2xl border px-4 py-6 text-sm ${dark ? "border-white/[0.06] text-[#9e9e9e]" : "border-slate-200 text-slate-500"}`}>
+            Loading login details...
+          </div>
+        ) : loginStudent ? (
+          <div className="space-y-4">
+            <div className={`rounded-2xl border p-4 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-slate-50"}`}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Student Name</p>
+                  <p className={`mt-1 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                    {loginStudent.firstName || ""} {loginStudent.lastName || ""}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Class</p>
+                  <p className={`mt-1 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                    {loginStudent.className || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Section</p>
+                  <p className={`mt-1 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                    {loginStudent.section || "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Roll Number</p>
+                  <p className={`mt-1 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                    {loginStudent.rollNumber || "-"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className={`rounded-2xl border p-4 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-slate-50"}`}>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Login ID</p>
+                  <p className={`mt-1 text-lg font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                    {loginStudent.loginId || generateStudentLoginId(loginStudent)}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Password</p>
+                  <p className={`mt-1 text-lg font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                    {loginStudent.loginPassword || generateStudentLoginPassword(loginStudent)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : null}
       </FormModal>
 

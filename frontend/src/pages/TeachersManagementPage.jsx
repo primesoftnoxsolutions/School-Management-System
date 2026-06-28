@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api from "../services/api/client";
 import FormModal from "../components/ui/FormModal";
 import CreateTeacherWizard, {
@@ -7,20 +7,12 @@ import CreateTeacherWizard, {
   initialCreateTeacherForm,
   isNoAssignClass,
 } from "../components/teachers/CreateTeacherWizard";
-import TeacherAttendanceModal from "../components/teachers/TeacherAttendanceModal";
 import TeacherRemoveModal from "../components/teachers/TeacherRemoveModal";
 import TeacherAssignmentHistoryModal from "../components/teachers/TeacherAssignmentHistoryModal";
 import TeacherLoginDetailsModal from "../components/teachers/TeacherLoginDetailsModal";
-import TeacherActivityMonitor from "../components/teachers/TeacherActivityMonitor";
+import TeacherProfilesModal from "../components/teachers/TeacherProfilesModal";
 import TablePagination from "../components/ui/TablePagination";
 import { CLASS_OPTIONS, SECTION_OPTIONS, SUBJECT_OPTIONS } from "../constants/classes";
-
-function toAttendanceDateValue(date = new Date()) {
-  const d = new Date(date);
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60 * 1000);
-  return local.toISOString().slice(0, 10);
-}
 
 function IconUsers() {
   return (
@@ -54,6 +46,15 @@ function IconHistory() {
   );
 }
 
+function IconProfile() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19a6 6 0 10-6 0" />
+      <circle cx="12" cy="9" r="3.2" />
+    </svg>
+  );
+}
+
 function IconEye() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
@@ -67,14 +68,6 @@ function IconUserPlus() {
   return (
     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" />
-    </svg>
-  );
-}
-
-function IconClipboardCheck() {
-  return (
-    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
     </svg>
   );
 }
@@ -142,9 +135,11 @@ function groupAssignedClasses(assignedClasses = []) {
 
   assignedClasses.forEach((item) => {
     const section = item.section || "A";
-    const key = `${item.className}|${section}`;
+    const branch = item.branch === "Boys" ? "Boys" : "Girls";
+    const key = `${branch}|${item.className}|${section}`;
     if (!groups.has(key)) {
       groups.set(key, {
+        branch,
         className: item.className,
         section,
         subjects: new Set(),
@@ -160,10 +155,10 @@ function groupAssignedClasses(assignedClasses = []) {
       return SECTION_OPTIONS.indexOf(a.section) - SECTION_OPTIONS.indexOf(b.section);
     })
     .map((group) => {
-      const classLabel = `${group.className} ${group.section}`;
+      const classLabel = `${group.branch} · ${group.className} ${group.section}`;
       const subjects = [...group.subjects].sort((a, b) => subjectSortIndex(a) - subjectSortIndex(b));
       return {
-        key: `${group.className}|${group.section}`,
+        key: `${group.branch}|${group.className}|${group.section}`,
         classLabel,
         subjects,
         display: `${classLabel}, ${subjects.join(", ")}`,
@@ -216,9 +211,10 @@ function ActivityStatusBadge({ status }) {
   );
 }
 
-export default function TeachersManagementPage({ dark = false, onToggleTheme }) {
+export default function TeachersManagementPage({ dark = false, onToggleTheme, branchSection = "" }) {
   const [createForm, setCreateForm] = useState({ ...initialCreateTeacherForm });
   const [assignTeacherId, setAssignTeacherId] = useState(null);
+  const [teacherModalMode, setTeacherModalMode] = useState(null);
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -227,17 +223,15 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ totalPages: 1, total: 0, limit: 10 });
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [createModalTeacherName, setCreateModalTeacherName] = useState("");
   const [createWizardKey, setCreateWizardKey] = useState(0);
-  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLoginDetailsModal, setShowLoginDetailsModal] = useState(false);
   const [loginDetailsTeacher, setLoginDetailsTeacher] = useState(null);
-  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
-  const [attendanceDate, setAttendanceDate] = useState(() => toAttendanceDateValue());
-  const [attendanceResetting, setAttendanceResetting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
 
   const loadData = async (nextPage = page, nextSearch = search) => {
     setLoading(true);
@@ -272,12 +266,173 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
     setCreateForm({ ...initialCreateTeacherForm });
   };
 
-  const closeCreateModal = () => {
-    setShowCreateModal(false);
+  const parseBooleanValue = (value) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    return normalized === "true" || normalized === "yes" || normalized === "1" || normalized === "on";
+  };
+
+  const parseKeyValueText = (text) => {
+    const result = {};
+    const lines = String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    lines.forEach((line) => {
+      if (line.startsWith("#")) return;
+      const separatorIndex = line.indexOf(":") >= 0 ? line.indexOf(":") : line.indexOf("=");
+      if (separatorIndex === -1) return;
+      const key = line.slice(0, separatorIndex).trim();
+      const value = line.slice(separatorIndex + 1).trim();
+      if (!key) return;
+      result[key] = value;
+    });
+
+    return result;
+  };
+
+  const splitList = (value) =>
+    String(value || "")
+      .split(/[,|]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const parseTeacherImportFile = (text) => {
+    let raw = {};
+    const trimmed = String(text || "").trim();
+
+    if (!trimmed) {
+      throw new Error("Import file is empty.");
+    }
+
+    try {
+      raw = trimmed.startsWith("{") || trimmed.startsWith("[") ? JSON.parse(trimmed) : parseKeyValueText(trimmed);
+    } catch {
+      raw = parseKeyValueText(trimmed);
+    }
+
+    const normalized = {
+      fullName: String(raw.fullName || raw.name || "").trim(),
+      email: String(raw.email || raw.emailId || "").trim(),
+      password: String(raw.password || "").trim(),
+      cnic: String(raw.cnic || "").trim(),
+      address: String(raw.address || "").trim(),
+      phoneNumber: String(raw.phoneNumber || raw.phone || raw.mobile || "").trim(),
+      designation: String(raw.designation || "").trim(),
+      qualification: String(raw.qualification || "").trim(),
+      expertise: String(raw.expertise || raw.favoriteSubjects || "").trim(),
+      salary: String(raw.salary ?? "").trim(),
+      allowPasswordReset:
+        raw.allowPasswordReset === undefined ? true : parseBooleanValue(raw.allowPasswordReset),
+      assignments: [],
+    };
+
+    const assignmentsSource = Array.isArray(raw.assignments)
+      ? raw.assignments
+      : typeof raw.assignments === "string" && raw.assignments.trim()
+        ? (() => {
+            try {
+              const parsed = JSON.parse(raw.assignments);
+              return Array.isArray(parsed) ? parsed : [parsed];
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+
+    if (assignmentsSource.length) {
+      normalized.assignments = assignmentsSource
+        .map((item) => ({
+          className: String(item.className || "").trim(),
+          branch: item.branch === "Boys" ? "Boys" : "Girls",
+          section: String(item.section || "").trim(),
+          subject: String(item.subject || "").trim() || "Class Teacher",
+        }))
+        .filter((item) => item.className && item.section && item.subject);
+    } else if (raw.className && raw.branch && (raw.sections || raw.section || raw.subject || raw.sectionSubjects)) {
+      const sections = Array.isArray(raw.sections) ? raw.sections : splitList(raw.sections || raw.section);
+      const subjectGroups = {};
+
+      if (raw.sectionSubjects && typeof raw.sectionSubjects === "object" && !Array.isArray(raw.sectionSubjects)) {
+        Object.entries(raw.sectionSubjects).forEach(([sectionKey, value]) => {
+          subjectGroups[String(sectionKey).trim()] = Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : splitList(value);
+        });
+      }
+
+      Object.entries(raw).forEach(([key, value]) => {
+        const sectionMatch = /^sectionsubjects?\.(.+)$/i.exec(key) || /^subjects\.(.+)$/i.exec(key);
+        if (sectionMatch) {
+          subjectGroups[sectionMatch[1].trim()] = splitList(value);
+        }
+      });
+
+      if (sections.length) {
+        normalized.assignments = sections.flatMap((section) => {
+          const subjects = subjectGroups[section] || splitList(raw.subject || raw.subjects || "Class Teacher");
+          return subjects.map((subject) => ({
+            className: String(raw.className).trim(),
+            branch: raw.branch === "Boys" ? "Boys" : "Girls",
+            section,
+            subject: subject || "Class Teacher",
+          }));
+        });
+      } else {
+        normalized.assignments = [
+          {
+            className: String(raw.className).trim(),
+            branch: raw.branch === "Boys" ? "Boys" : "Girls",
+            section: String(raw.section || "A").trim(),
+            subject: String(raw.subject || "Class Teacher").trim() || "Class Teacher",
+          },
+        ];
+      }
+    }
+
+    if (!normalized.fullName || !normalized.email || !normalized.password) {
+      throw new Error("Import file must include fullName, email, and password.");
+    }
+
+    if (!normalized.assignments.length) {
+      normalized.assignments = [];
+    }
+
+    return normalized;
+  };
+
+  const importTeacherFromFile = async (file) => {
+    if (!file) return;
+    setImporting(true);
+    setError("");
+    setSuccess("");
+    try {
+      const text = await file.text();
+      const payload = parseTeacherImportFile(text);
+      await api.post("/teachers", payload);
+      setSuccess("Teacher imported successfully.");
+      await loadData(1, search);
+    } catch (err) {
+      setError(err.message || err.response?.data?.message || "Failed to import teacher");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const closeTeacherModal = () => {
     setAssignTeacherId(null);
+    setTeacherModalMode(null);
     setCreateModalTeacherName("");
     setError("");
     resetCreateForm();
+  };
+
+  const openTeacherModal = (mode) => {
+    setAssignTeacherId(null);
+    setTeacherModalMode(mode);
+    setCreateForm({ ...initialCreateTeacherForm, branch: branchSection });
+    setCreateWizardKey((key) => key + 1);
+    setCreateModalTeacherName("");
+    setError("");
   };
 
   const onSaveAssignments = async (teacherId, wizardForm) => {
@@ -288,12 +443,13 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
       const assignments = isNoAssignClass(wizardForm.className)
         ? []
         : buildAssignmentsFromSelection(
-            wizardForm.className,
+            wizardForm.classAssignments || wizardForm.classNames || wizardForm.className,
+            wizardForm.branch,
             wizardForm.sections,
             wizardForm.sectionSubjects
           );
       await api.put(`/teachers/${teacherId}`, { assignments });
-      closeCreateModal();
+      closeTeacherModal();
       setSuccess(
         assignments.length
           ? "Class assignments saved successfully."
@@ -323,7 +479,8 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
       const assignments = isNoAssignClass(wizardForm.className)
         ? []
         : buildAssignmentsFromSelection(
-            wizardForm.className,
+            wizardForm.classAssignments || wizardForm.classNames || wizardForm.className,
+            wizardForm.branch,
             wizardForm.sections,
             wizardForm.sectionSubjects
           );
@@ -344,11 +501,13 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
       await api.post("/teachers", payload);
       resetCreateForm();
       setSuccess(
-        assignments.length
-          ? "Teacher created successfully with assigned classes."
-          : "Teacher created successfully without class assignment."
+        teacherModalMode === "import"
+          ? "Teacher imported successfully."
+          : assignments.length
+            ? "Teacher created successfully with assigned classes."
+            : "Teacher created successfully without class assignment."
       );
-      setShowCreateModal(false);
+      setTeacherModalMode(null);
       await loadData(1, search);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create teacher");
@@ -369,33 +528,11 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
 
   const openAssignModal = (teacher) => {
     setAssignTeacherId(teacher._id);
+    setTeacherModalMode("assign");
     setCreateForm(assignedClassesToFormState(teacher.assignedClasses, teacher));
     setCreateModalTeacherName(teacher.fullName || "");
     setCreateWizardKey((key) => key + 1);
     setError("");
-    setShowCreateModal(true);
-  };
-
-  const handleAttendanceChange = () => {
-    setAttendanceRefreshKey((key) => key + 1);
-  };
-
-  const resetDemoAttendance = async () => {
-    const dateLabel = new Date(`${attendanceDate}T12:00:00`).toLocaleDateString("en-US", {
-      dateStyle: "medium",
-    });
-    if (!window.confirm(`Reset teacher attendance for ${dateLabel}? (Demo / test only)`)) return;
-    setAttendanceResetting(true);
-    setError("");
-    try {
-      await api.post("/teacher-attendance/reset-demo", { date: attendanceDate });
-      setAttendanceRefreshKey((key) => key + 1);
-      setSuccess(`Attendance reset for ${dateLabel}.`);
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to reset attendance");
-    } finally {
-      setAttendanceResetting(false);
-    }
   };
 
   const cardClass = dark
@@ -403,12 +540,12 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
     : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm";
 
   const hasOpenModal =
-    showCreateModal || showAttendanceModal || showRemoveModal || showHistoryModal || showLoginDetailsModal;
+    Boolean(teacherModalMode) || showRemoveModal || showHistoryModal || showProfileModal || showLoginDetailsModal;
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           <div
             className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg ${
@@ -427,13 +564,7 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            onClick={() => {
-              setAssignTeacherId(null);
-              resetCreateForm();
-              setCreateWizardKey((key) => key + 1);
-              setError("");
-              setShowCreateModal(true);
-            }}
+            onClick={() => openTeacherModal("create")}
             className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2 text-sm font-medium text-white ${
               dark ? "bg-[#7c4dff] hover:bg-[#6a3df0]" : "ref-btn-primary"
             }`}
@@ -443,15 +574,18 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
           </button>
           <button
             type="button"
-            onClick={() => setShowAttendanceModal(true)}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
             className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium ${
               dark
-                ? "border-white/[0.06] bg-[#161722] text-white hover:bg-white/[0.04]"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                ? "border-[#7c4dff]/30 bg-[#7c4dff]/10 text-[#7c4dff] hover:bg-[#7c4dff]/15"
+                : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
             }`}
           >
-            <IconClipboardCheck />
-            Teacher Attendance
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16" />
+            </svg>
+            {importing ? "Importing..." : "Import Teacher"}
           </button>
           <button
             type="button"
@@ -465,9 +599,16 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
             <IconUserMinus />
             Teacher Remove at School
           </button>
-          <TeacherIllustration />
         </div>
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.json,text/plain,application/json"
+        className="hidden"
+        onChange={(event) => importTeacherFromFile(event.target.files?.[0])}
+      />
 
       {error && !hasOpenModal ? (
         <div
@@ -489,7 +630,7 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
       ) : null}
 
       {/* Search bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="mt-1 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${dark ? "text-[#9e9e9e]" : "text-slate-400"}`}>
             <IconSearch />
@@ -550,6 +691,19 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
             </h3>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              title="Teacher profiles"
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                dark
+                  ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <IconProfile />
+              Profiles
+            </button>
             <button
               type="button"
               onClick={() => setShowHistoryModal(true)}
@@ -661,62 +815,28 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
         />
       </div>
 
-      {/* Activity monitor */}
-      <div className={cardClass}>
-        <TeacherActivityMonitor
-          dark={dark}
-          onToggleTheme={onToggleTheme}
-          refreshKey={attendanceRefreshKey}
-        />
-      </div>
-
       <FormModal
-        open={showCreateModal}
-        title={assignTeacherId ? "Class Assignments" : "Create Teacher"}
+        open={Boolean(teacherModalMode)}
+        title={teacherModalMode === "assign" ? "Class Assignments" : "Create Teacher"}
         subtitle={createModalTeacherName}
-        onClose={closeCreateModal}
+        onClose={closeTeacherModal}
         wide
         dark={dark}
         onToggleTheme={onToggleTheme}
       >
-        {showCreateModal ? (
+        {teacherModalMode ? (
           <CreateTeacherWizard
             key={createWizardKey}
             form={createForm}
             setForm={setCreateForm}
             onSubmit={onWizardSubmit}
             saving={saving}
-            onCancel={closeCreateModal}
+            onCancel={closeTeacherModal}
             onTitleChange={setCreateModalTeacherName}
             dark={dark}
-            mode={assignTeacherId ? "assign" : "create"}
+            mode={teacherModalMode === "assign" ? "assign" : "create"}
             submitError={error}
             onDismissError={() => setError("")}
-          />
-        ) : null}
-      </FormModal>
-
-      <FormModal
-        open={showAttendanceModal}
-        title="Teacher Attendance"
-        onClose={() => {
-          setShowAttendanceModal(false);
-          setError("");
-        }}
-        extraWide
-        dark={dark}
-        onToggleTheme={onToggleTheme}
-        onDemoReset={resetDemoAttendance}
-        demoResetting={attendanceResetting}
-        error={showAttendanceModal ? error : ""}
-      >
-        {showAttendanceModal ? (
-          <TeacherAttendanceModal
-            dark={dark}
-            date={attendanceDate}
-            onDateChange={setAttendanceDate}
-            onAttendanceChange={handleAttendanceChange}
-            refreshKey={attendanceRefreshKey}
           />
         ) : null}
       </FormModal>
@@ -731,6 +851,18 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme }) 
         onToggleTheme={onToggleTheme}
       >
         {showHistoryModal ? <TeacherAssignmentHistoryModal dark={dark} /> : null}
+      </FormModal>
+
+      <FormModal
+        open={showProfileModal}
+        title="View Teacher Profiles"
+        subtitle="Teacher profile filters and details"
+        onClose={() => setShowProfileModal(false)}
+        extraWide
+        dark={dark}
+        onToggleTheme={onToggleTheme}
+      >
+        {showProfileModal ? <TeacherProfilesModal dark={dark} /> : null}
       </FormModal>
 
       <FormModal
