@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useDispatch, useSelector } from "react-redux";
 
@@ -55,6 +55,118 @@ import RollNoSlipsManagementPage from "./teacher/RollNoSlipsManagementPage";
 import PaperResultCardManagementPage from "./teacher/PaperResultCardManagementPage";
 import ClassTimeTablePage from "./teacher/ClassTimeTablePage";
 
+const getLocalDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getTeacherDailyStatusKey = (user, dateKey = getLocalDateKey()) =>
+  `teacher-daily-status:${user?._id || user?.id || user?.fullName || "teacher"}:${dateKey}`;
+
+const attendanceOptions = [
+  {
+    value: "PRESENT",
+    label: "Present",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+    dot: "bg-emerald-500",
+  },
+  {
+    value: "ABSENT",
+    label: "Absent",
+    className: "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
+    dot: "bg-rose-500",
+  },
+  {
+    value: "LEAVE",
+    label: "Leave",
+    className: "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+    dot: "bg-amber-500",
+  },
+];
+
+function TeacherDailyAttendancePopup({ user, dark = false }) {
+  const [status, setStatus] = useState("");
+  const [shouldShow, setShouldShow] = useState(false);
+
+  useEffect(() => {
+    const syncDailyStatus = () => {
+      const now = new Date();
+      const dateKey = getLocalDateKey(now);
+      const key = getTeacherDailyStatusKey(user, dateKey);
+      const savedStatus = localStorage.getItem(key) || "";
+      const hour = now.getHours();
+
+      if (!savedStatus && hour >= 12) {
+        localStorage.setItem(key, "ABSENT");
+        setStatus("ABSENT");
+        setShouldShow(false);
+        return;
+      }
+
+      setStatus(savedStatus);
+      setShouldShow(!savedStatus && hour >= 8 && hour < 12);
+    };
+
+    syncDailyStatus();
+    const intervalId = window.setInterval(syncDailyStatus, 30000);
+    return () => window.clearInterval(intervalId);
+  }, [user]);
+
+  const markStatus = (nextStatus) => {
+    const key = getTeacherDailyStatusKey(user);
+    localStorage.setItem(key, nextStatus);
+    setStatus(nextStatus);
+    setShouldShow(false);
+  };
+
+  if (!shouldShow || status) return null;
+
+  return (
+    <div className="pointer-events-none fixed right-5 top-24 z-[70] w-[min(92vw,410px)] lg:right-8">
+      <div
+        className={`pointer-events-auto overflow-hidden rounded-3xl border shadow-2xl ${
+          dark
+            ? "border-white/10 bg-[#161722] text-white shadow-black/40"
+            : "border-blue-100 bg-white text-slate-900 shadow-blue-950/15"
+        }`}
+      >
+        <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-violet-700 px-5 py-4 text-white">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-blue-100">Daily Attendance</p>
+              <h3 className="mt-1 text-lg font-black">Good Morning, {user?.fullName || "Teacher"}</h3>
+            </div>
+            <div className="rounded-2xl bg-white/15 px-3 py-2 text-center backdrop-blur">
+              <p className="text-[10px] font-bold uppercase text-blue-100">Until</p>
+              <p className="text-sm font-black">12:00 PM</p>
+            </div>
+          </div>
+        </div>
+
+        <div className={`p-5 ${dark ? "bg-[#161722]" : "bg-white"}`}>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {attendanceOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => markStatus(option.value)}
+                className={`rounded-2xl border px-3 py-5 text-center transition ${option.className}`}
+              >
+                <span className="flex items-center justify-center gap-2 text-sm font-black">
+                  <span className={`h-2.5 w-2.5 rounded-full ${option.dot}`} />
+                  {option.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 
 export default function DashboardPage({ entering = false }) {
@@ -66,8 +178,20 @@ export default function DashboardPage({ entering = false }) {
   const isTeacher = user?.role === "TEACHER";
 
   const [selected, setSelected] = useState(isTeacher ? "My Panel" : "Dashboard");
+  const [teacherAcademicIntent, setTeacherAcademicIntent] = useState(null);
 
   const { isDark: isAppDark, toggleTheme } = useAppTheme();
+
+  const handleTeacherNavigate = (target) => {
+    if (typeof target === "object" && target?.page) {
+      setTeacherAcademicIntent(target.intent ? { ...target.intent, stamp: Date.now() } : null);
+      setSelected(target.page);
+      return;
+    }
+
+    setTeacherAcademicIntent(null);
+    setSelected(target);
+  };
 
 
 
@@ -77,7 +201,7 @@ export default function DashboardPage({ entering = false }) {
 
       case "My Panel":
 
-        return <TeacherPanelPage onNavigate={setSelected} dark={isAppDark} />;
+        return <TeacherPanelPage onNavigate={handleTeacherNavigate} dark={isAppDark} />;
 
       case "Mark Attendance":
 
@@ -101,7 +225,7 @@ export default function DashboardPage({ entering = false }) {
         return <RollNoSlipsManagementPage dark={isAppDark} />;
 
       case "Paper, Date Sheet & Result":
-        return <PaperResultCardManagementPage dark={isAppDark} />;
+        return <PaperResultCardManagementPage dark={isAppDark} navigationIntent={teacherAcademicIntent} />;
 
       case "Class Time Table":
         return <ClassTimeTablePage dark={isAppDark} />;
@@ -112,7 +236,7 @@ export default function DashboardPage({ entering = false }) {
 
       default:
 
-        return <TeacherPanelPage onNavigate={setSelected} dark={isAppDark} />;
+        return <TeacherPanelPage onNavigate={handleTeacherNavigate} dark={isAppDark} />;
 
     }
 
@@ -187,6 +311,8 @@ export default function DashboardPage({ entering = false }) {
 
           onLogout={() => dispatch(logout())}
 
+          user={user}
+
           dark={isAppDark}
 
           entering={entering}
@@ -259,6 +385,8 @@ export default function DashboardPage({ entering = false }) {
           {isTeacher ? renderTeacherContent() : renderAdminContent()}
 
         </div>
+
+        {isTeacher ? <TeacherDailyAttendancePopup user={user} dark={isAppDark} /> : null}
 
       </main>
 

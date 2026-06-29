@@ -322,7 +322,7 @@ function PaperPreview({ paper }) {
   );
 }
 
-export default function PaperResultCardManagementPage({ dark = false }) {
+export default function PaperResultCardManagementPage({ dark = false, navigationIntent = null }) {
   const [mode, setMode] = useState("PAPER");
   const [showPaperForm, setShowPaperForm] = useState(false);
   const [showDateSheetForm, setShowDateSheetForm] = useState(false);
@@ -358,6 +358,17 @@ export default function PaperResultCardManagementPage({ dark = false }) {
   const [resultNotice, setResultNotice] = useState("");
   const [savedResults, setSavedResults] = useState([]);
   const [printResult, setPrintResult] = useState(null);
+
+  useEffect(() => {
+    if (!navigationIntent?.mode) return;
+
+    setMode(navigationIntent.mode);
+    if (navigationIntent.openForm) {
+      setShowPaperForm(navigationIntent.mode === "PAPER");
+      setShowDateSheetForm(navigationIntent.mode === "DATE_SHEET");
+      setShowResultForm(navigationIntent.mode === "RESULT");
+    }
+  }, [navigationIntent]);
   const [error, setError] = useState("");
 
   const classSectionOptions = useMemo(() => {

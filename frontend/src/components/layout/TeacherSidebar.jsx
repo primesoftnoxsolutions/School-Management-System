@@ -2,19 +2,20 @@ import { useEffect, useState } from "react";
 import { IconLogout, teacherNavIconMap } from "../icons/NavIcons";
 import LogoutConfirmModal from "./LogoutConfirmModal";
 
-export default function TeacherSidebar({ selected, onSelect, onLogout, dark = true, entering = false }) {
+export default function TeacherSidebar({ selected, onSelect, onLogout, user, dark = true, entering = false }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [academicOpen, setAcademicOpen] = useState(false);
   const [myClassesOpen, setMyClassesOpen] = useState(false);
   const AcademicIcon = teacherNavIconMap["Academic Records"];
   const MyClassesIcon = teacherNavIconMap["My Classes"];
+  const ReportsIcon = teacherNavIconMap.Reports;
   const academicItems = [
     "Academic Records",
     "Roll No Slips Management",
     "Paper, Date Sheet & Result",
   ];
   const myClassesItems = ["My Classes", "Class Time Table", "Monthly Syllabus", "Assigned Duties"];
-  const navItems = ["My Panel", "Mark Attendance", "Reports"];
+  const navItems = ["My Panel", "Mark Attendance"];
 
   useEffect(() => {
     if (academicItems.includes(selected)) {
@@ -250,6 +251,29 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
               </div>
             ) : null}
           </div>
+
+          <button
+            type="button"
+            onClick={() => onSelect("Reports")}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
+              selected === "Reports"
+                ? dark
+                  ? "bg-[#7c4dff] text-white"
+                  : "bg-blue-600 text-white shadow-md"
+                : dark
+                  ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                selected === "Reports" ? "bg-white/15" : dark ? "" : "bg-slate-100"
+              }`}
+            >
+              {ReportsIcon ? <ReportsIcon className="h-5 w-5" /> : null}
+            </span>
+            <span>Reports</span>
+          </button>
         </nav>
 
         <div className="p-4">
@@ -272,6 +296,9 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
 
       <LogoutConfirmModal
         open={showLogoutConfirm}
+        contextLabel={user?.fullName || "Teacher"}
+        message="Are you sure you want to end this teacher session? Unsaved work should be saved before leaving."
+        note="You can sign back in anytime with your teacher account."
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={() => {
           setShowLogoutConfirm(false);

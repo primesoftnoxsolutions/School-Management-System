@@ -27,6 +27,8 @@ const toDateKey = (date) => {
   return `${year}-${month}-${day}`;
 };
 
+const todayKey = () => toDateKey(new Date());
+
 const getMonthRange = (monthIndex) => {
   const start = new Date(currentYear, monthIndex, 1);
   const end = new Date(currentYear, monthIndex + 1, 0);
@@ -64,41 +66,37 @@ const academicFeatures = [
     title: "View Assigned Monthly Syllabus",
     description: "Review class-wise syllabus coverage for the selected month.",
     icon: "book",
+    target: "Monthly Syllabus",
   },
   {
     title: "Create Examination Date Sheets",
     description: "Plan 1st Term, 2nd Term and Final exam schedules.",
     icon: "calendar",
-  },
-  {
-    title: "Generate Student Roll Numbers & Roll Slips",
-    description: "Prepare roll numbers and slips for the selected class.",
-    icon: "id",
+    target: { page: "Paper, Date Sheet & Result", intent: { mode: "DATE_SHEET", openForm: true } },
   },
   {
     title: "Schedule Automatic Roll Slip Delivery",
     description: "Queue roll slips for students and the principal.",
     icon: "send",
+    target: "Roll No Slips Management",
   },
   {
     title: "Generate Student Result Cards",
     description: "Create result cards after exams are finalized.",
     icon: "file",
-  },
-  {
-    title: "Schedule Automatic Result Card Delivery",
-    description: "Deliver result cards to students and the principal.",
-    icon: "send",
+    target: { page: "Paper, Date Sheet & Result", intent: { mode: "RESULT", openForm: true } },
   },
   {
     title: "View Class Timetable",
     description: "Open the timetable for the selected class only.",
     icon: "clock",
+    target: "Class Time Table",
   },
   {
     title: "Create Examination Papers",
     description: "Prepare papers for upcoming assessment cycles.",
     icon: "clipboard",
+    target: { page: "Paper, Date Sheet & Result", intent: { mode: "PAPER", openForm: true } },
   },
 ];
 
@@ -354,14 +352,96 @@ function SummaryIllustration({ dark }) {
   );
 }
 
+const buildSummaryCalendarCells = (range) => {
+  const start = new Date(`${range.from}T00:00:00`);
+  const year = start.getFullYear();
+  const month = start.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = firstDay.getDay();
+  const cells = [];
+
+  for (let index = 0; index < 35; index += 1) {
+    const date = new Date(year, month, index - startOffset + 1);
+    const key = toDateKey(date);
+    cells.push({
+      key,
+      day: date.getDate(),
+      inMonth: date.getMonth() === month,
+      inRange: key >= range.from && key <= range.to,
+    });
+  }
+
+  return cells;
+};
+
+function SummaryCalendar({ range, totals, dark }) {
+  const cells = useMemo(() => buildSummaryCalendarCells(range), [range]);
+  const monthLabel = new Date(`${range.from}T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const metricClass = dark ? "border-white/[0.06] bg-white/[0.03]" : "border-blue-100 bg-blue-50/70";
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className={`rounded-2xl border p-3 ${dark ? "border-white/[0.06] bg-[#1a1b26]" : "border-blue-100 bg-white"}`}>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className={`text-sm font-black ${dark ? "text-white" : "text-blue-950"}`}>{monthLabel}</p>
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${dark ? "bg-[#7c4dff]/15 text-[#a78bfa]" : "bg-violet-50 text-violet-600"}`}>
+            Selected Range
+          </span>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase text-slate-400">
+          {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+            <span key={`${day}-${index}`}>{day}</span>
+          ))}
+        </div>
+        <div className="mt-2 grid grid-cols-7 gap-1">
+          {cells.map((cell) => (
+            <span
+              key={cell.key}
+              className={`flex h-9 items-center justify-center rounded-lg text-xs font-black ${
+                cell.inRange
+                  ? dark
+                    ? "bg-[#7c4dff] text-white"
+                    : "bg-violet-600 text-white"
+                  : cell.inMonth
+                    ? dark
+                      ? "bg-white/[0.04] text-slate-300"
+                      : "bg-slate-50 text-slate-600"
+                    : "text-slate-300 opacity-50"
+              }`}
+            >
+              {cell.day}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className={`flex items-center justify-between rounded-xl border px-3 py-2 ${metricClass}`}>
+          <p className="text-[10px] font-black uppercase text-emerald-600">Present</p>
+          <p className={`text-lg font-black ${dark ? "text-white" : "text-slate-950"}`}>{totals.presentStudents}</p>
+        </div>
+        <div className={`flex items-center justify-between rounded-xl border px-3 py-2 ${metricClass}`}>
+          <p className="text-[10px] font-black uppercase text-rose-600">Absent</p>
+          <p className={`text-lg font-black ${dark ? "text-white" : "text-slate-950"}`}>{totals.absentStudents}</p>
+        </div>
+        <div className={`flex items-center justify-between rounded-xl border px-3 py-2 ${metricClass}`}>
+          <p className="text-[10px] font-black uppercase text-amber-600">Leave</p>
+          <p className={`text-lg font-black ${dark ? "text-white" : "text-slate-950"}`}>{totals.studentsOnLeave}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TeacherPanelPage({ onNavigate, dark = false }) {
   const [panel, setPanel] = useState(null);
   const [classOptions, setClassOptions] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [monthIndex, setMonthIndex] = useState(new Date().getMonth());
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
+  const [fromDate, setFromDate] = useState(todayKey());
+  const [toDate, setToDate] = useState(todayKey());
   const [summaryRows, setSummaryRows] = useState([]);
+  const [studentRows, setStudentRows] = useState([]);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
   const [activeFeature, setActiveFeature] = useState(null);
@@ -389,18 +469,21 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
   const summaryRange = fromDate && toDate ? { from: fromDate, to: toDate, label: getRangeLabel(fromDate, toDate) } : monthRange;
 
   const summaryTotals = useMemo(
-    () =>
-      summaryRows.reduce(
+    () => {
+      const totals = summaryRows.reduce(
         (acc, row) => {
-          acc.totalStudents += 1;
           acc.presentStudents += Number(row.present || 0);
           acc.absentStudents += Number(row.absent || 0);
           acc.studentsOnLeave += Number(row.leave || 0);
           return acc;
         },
         { totalStudents: 0, presentStudents: 0, absentStudents: 0, studentsOnLeave: 0 }
-      ),
-    [summaryRows]
+      );
+
+      totals.totalStudents = studentRows.length || summaryRows.length;
+      return totals;
+    },
+    [studentRows.length, summaryRows]
   );
 
   useEffect(() => {
@@ -441,6 +524,7 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
   useEffect(() => {
     if (!selectedClassId || !selectedClass?.className || !summaryRange.from || !summaryRange.to) {
       setSummaryRows([]);
+      setStudentRows([]);
       return;
     }
 
@@ -448,18 +532,28 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
       setLoadingSummary(true);
       setError("");
       try {
-        const { data } = await api.get("/teacher-panel/attendance/summary", {
-          params: {
-            className: selectedClass.className,
-            section: selectedClass.section || "A",
-            fromDate: summaryRange.from,
-            toDate: summaryRange.to,
-          },
-        });
-        setSummaryRows(data.data || []);
+        const [summaryRes, studentsRes] = await Promise.all([
+          api.get("/teacher-panel/attendance/summary", {
+            params: {
+              className: selectedClass.className,
+              section: selectedClass.section || "A",
+              fromDate: summaryRange.from,
+              toDate: summaryRange.to,
+            },
+          }),
+          api.get("/teacher-panel/students", {
+            params: {
+              className: selectedClass.className,
+              section: selectedClass.section || "A",
+            },
+          }),
+        ]);
+        setSummaryRows(summaryRes.data.data || []);
+        setStudentRows(studentsRes.data.data || []);
       } catch (err) {
         setError(err.response?.data?.message || "Failed to load attendance summary");
         setSummaryRows([]);
+        setStudentRows([]);
       } finally {
         setLoadingSummary(false);
       }
@@ -561,8 +655,9 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
                   value={monthIndex}
                   onChange={(event) => {
                     setMonthIndex(Number(event.target.value));
-                    setFromDate("");
-                    setToDate("");
+                    const nextRange = getMonthRange(Number(event.target.value));
+                    setFromDate(nextRange.from);
+                    setToDate(nextRange.to);
                   }}
                 >
                   {MONTH_OPTIONS.map((month, index) => (
@@ -612,7 +707,7 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(360px,1fr)]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(360px,1fr)]">
         <div className={`rounded-2xl border p-5 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-white/80 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.05)]"}`}>
           <div className="mb-4 flex items-center justify-between gap-4">
             <h3 className={`flex items-center gap-3 text-sm font-extrabold uppercase ${dark ? "text-white" : "text-slate-800"}`}>
@@ -635,6 +730,10 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
                 feature={feature}
                 dark={dark}
                 onClick={() => {
+                  if (feature.target) {
+                    onNavigate?.(feature.target);
+                    return;
+                  }
                   setActiveFeature(feature);
                   setShowFeatureModal(true);
                 }}
@@ -648,7 +747,7 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
             <span className={`h-6 w-1 rounded-full ${dark ? "bg-[#7c4dff]" : "bg-violet-500"}`} />
             Summary Range
           </h3>
-          <div className="mt-7 space-y-4 px-4 text-sm">
+          <div className="mt-5 space-y-3 px-4 text-sm">
             <div className="grid grid-cols-[72px_minmax(0,1fr)] gap-5">
               <span className={`font-bold ${dark ? "text-white" : "text-slate-900"}`}>Class</span>
               <span className={`font-bold ${dark ? "text-[#a78bfa]" : "text-violet-600"}`}>
@@ -662,13 +761,8 @@ export default function TeacherPanelPage({ onNavigate, dark = false }) {
               </span>
             </div>
           </div>
-          <div className={`mt-7 h-px ${dark ? "bg-white/[0.06]" : "bg-slate-200"}`} />
-          <div className="mt-9">
-            <SummaryIllustration dark={dark} />
-          </div>
-          <p className={`mx-auto mt-2 max-w-[300px] text-center text-sm leading-6 ${dark ? "text-[#9e9e9e]" : "text-slate-600"}`}>
-            The summary cards continue to use the existing attendance summary API.
-          </p>
+          <div className={`mt-5 h-px ${dark ? "bg-white/[0.06]" : "bg-slate-200"}`} />
+          <SummaryCalendar range={summaryRange} totals={summaryTotals} dark={dark} />
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSelector } from "react-redux";
 import api from "../../services/api/client";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -14,6 +15,78 @@ const DEFAULT_SUBJECTS = ["English", "Urdu", "Maths", "Physics", "Chemistry", "B
 const formatDate = (date) => {
   if (!date) return "-";
   return new Date(date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+const toDateKey = (date) => {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return "";
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const addDays = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const getTeacherDailyStatusKeys = (user, teacherName, dateKey) => {
+  const identities = [user?._id, user?.id, user?.fullName, teacherName, "teacher"].filter(Boolean);
+  return [...new Set(identities)].map((identity) => `teacher-daily-status:${identity}:${dateKey}`);
+};
+
+const normalizeTeacherStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (value === "PRESENT") return "Present";
+  if (value === "ABSENT") return "Absent";
+  if (value === "LEAVE") return "Leave";
+  if (value === "LATE") return "Late";
+  return status || "-";
+};
+
+const mergeLocalTeacherAttendance = (attendance, { user, teacherName, fromDate, toDate }) => {
+  const start = new Date(`${fromDate}T00:00:00`);
+  const end = new Date(`${toDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    return attendance || null;
+  }
+
+  const itemsByDate = new Map(
+    (attendance?.items || []).map((item) => [toDateKey(item.date), { ...item, status: normalizeTeacherStatus(item.status) }])
+  );
+
+  for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
+    const dateKey = toDateKey(cursor);
+    const localStatus = getTeacherDailyStatusKeys(user, teacherName, dateKey)
+      .map((key) => localStorage.getItem(key))
+      .find(Boolean);
+
+    if (localStatus) {
+      itemsByDate.set(dateKey, {
+        date: dateKey,
+        status: normalizeTeacherStatus(localStatus),
+        remarks: "Teacher dashboard",
+      });
+    }
+  }
+
+  const items = [...itemsByDate.values()].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const totals = items.reduce(
+    (acc, item) => {
+      const status = String(item.status || "").toLowerCase();
+      if (status === "present") acc.present += 1;
+      if (status === "absent") acc.absent += 1;
+      if (status === "late") acc.late += 1;
+      if (status === "leave") acc.leave += 1;
+      if (["present", "absent", "late", "leave"].includes(status)) acc.marked += 1;
+      return acc;
+    },
+    { present: 0, absent: 0, late: 0, leave: 0, marked: 0 }
+  );
+
+  return { ...(attendance || {}), items, totals };
 };
 
 const getStudentName = (student) => `${student.firstName || ""} ${student.lastName || ""}`.trim() || "-";
@@ -74,6 +147,7 @@ function SummaryPill({ label, value, tone = "blue" }) {
 }
 
 export default function TeacherReportsPage() {
+  const user = useSelector((state) => state.auth.user);
   const [teacherName, setTeacherName] = useState("");
   const [classOptions, setClassOptions] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
@@ -233,7 +307,14 @@ export default function TeacherReportsPage() {
       const { data } = await api.get("/teacher-panel/my-attendance/summary", {
         params: { fromDate: periodFrom, toDate: periodTo },
       });
-      setTeacherAttendance(data.data || null);
+      setTeacherAttendance(
+        mergeLocalTeacherAttendance(data.data || null, {
+          user,
+          teacherName,
+          fromDate: periodFrom,
+          toDate: periodTo,
+        })
+      );
     } catch (err) {
       setError(err.response?.data?.message || "Failed to generate teacher attendance report");
       setTeacherAttendance(null);

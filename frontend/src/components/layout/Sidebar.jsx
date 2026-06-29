@@ -113,6 +113,9 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
 
       <LogoutConfirmModal
         open={showLogoutConfirm}
+        contextLabel="Naseer Ideal Public School"
+        message="Are you sure you want to end this school management session? Unsaved work should be saved before leaving."
+        note={`You can sign back in anytime with your ${role === "SUPER_ADMIN" ? "super admin" : "school"} account.`}
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={() => {
           setShowLogoutConfirm(false);
