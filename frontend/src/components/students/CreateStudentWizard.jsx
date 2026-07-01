@@ -101,7 +101,7 @@ function inputClass(dark = false, extra = "") {
 export function buildStudentPayload(form) {
   const nameParts = form.fullName.trim().split(/\s+/);
   const firstName = nameParts[0] || "";
-  const lastName = nameParts.slice(1).join(" ") || firstName;
+  const lastName = nameParts.slice(1).join(" ") || form.fatherName.trim();
   const previousResults = (form.previousResults || []).map((row) => ({
     previousClass: row.previousClass || "",
     resultGrade: row.resultGrade || "",

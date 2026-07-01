@@ -26,9 +26,10 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
     "Reports",
   ];
 
-  const navItems = role === "ACCOUNTANT" ? ["Finance Management"] : adminNavItems;
+  const navItems = role === "ACCOUNTANT" ? ["Dashboard", "Purchase Management", "Fees Management", "Reports"] : adminNavItems;
+  const financeFeeSubpages = ["Fine Management", "Refund Management"];
   const isTeacherSubpageActive = isTeacherSubpage(selected);
-  const isFeeSubpageActive = isFeeSubpage(selected);
+  const isFeeSubpageActive = isFeeSubpage(selected) || selected === "Refund Management";
   const isStudentSubpageActive = isStudentSubpage(selected);
 
   useEffect(() => {
@@ -182,9 +183,10 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
               );
             }
 
-            if (item === "Fee Management") {
-              const FeePageIcon = navIconMap["Fee Management"] || Icon;
+            if (item === "Fee Management" || item === "Fees Management") {
+              const FeePageIcon = navIconMap[item] || navIconMap["Fee Management"] || Icon;
               const feeParentActive = active || isFeeSubpageActive;
+              const feeSubpages = role === "ACCOUNTANT" ? financeFeeSubpages : FEE_SUBPAGES;
 
               return (
                 <div key={item} className="rounded-2xl border border-transparent transition">
@@ -212,7 +214,7 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
                         >
                           {FeePageIcon ? <FeePageIcon className="h-5 w-5" /> : null}
                         </span>
-                        <span>Fee Management</span>
+                        <span>{item}</span>
                       </button>
 
                       <button
@@ -237,7 +239,7 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
                   >
                     <div className="min-h-0 overflow-hidden">
                       <TeacherNavSubmenu
-                        items={FEE_SUBPAGES}
+                        items={feeSubpages}
                         selected={selected}
                         onSelect={onSelect}
                         dark={dark}

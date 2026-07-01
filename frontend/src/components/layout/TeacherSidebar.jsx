@@ -1,30 +1,30 @@
 import { useEffect, useState } from "react";
-import { IconChevronDown, IconLogout, teacherNavIconMap } from "../icons/NavIcons";
-import { isTeacherSubpage, TEACHER_PORTAL_SUBPAGES } from "../../constants/teacherNav";
-import TeacherNavSubmenu from "./TeacherNavSubmenu";
+import { IconLogout, teacherNavIconMap } from "../icons/NavIcons";
 import LogoutConfirmModal from "./LogoutConfirmModal";
 
-export default function TeacherSidebar({ selected, onSelect, onLogout, dark = true, entering = false }) {
+export default function TeacherSidebar({ selected, onSelect, onLogout, user, dark = true, entering = false }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [teacherMenuOpen, setTeacherMenuOpen] = useState(false);
-  const isTeacherChildActive = isTeacherSubpage(selected);
+  const [academicOpen, setAcademicOpen] = useState(false);
+  const [myClassesOpen, setMyClassesOpen] = useState(false);
+  const AcademicIcon = teacherNavIconMap["Academic Records"];
+  const MyClassesIcon = teacherNavIconMap["My Classes"];
+  const ReportsIcon = teacherNavIconMap.Reports;
+  const academicItems = [
+    "Academic Records",
+    "Roll No Slips Management",
+    "Paper, Date Sheet & Result",
+  ];
+  const myClassesItems = ["My Classes", "Class Time Table", "Monthly Syllabus", "Assigned Duties"];
+  const navItems = ["My Panel", "Mark Attendance"];
 
   useEffect(() => {
-    if (isTeacherChildActive) setTeacherMenuOpen(true);
-    else setTeacherMenuOpen(false);
-  }, [isTeacherChildActive]);
-
-  const headerIdleClass = dark
-    ? "bg-[#131526] text-[#d7d2ff] hover:bg-[#1a1c33] hover:text-white"
-    : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900";
-
-  const headerActiveClass = dark
-    ? "bg-[#7c4dff] text-white shadow-[0_12px_24px_rgba(124,77,255,0.28)]"
-    : "bg-gradient-to-r from-[#6f58ff] to-[#4b36d2] text-white shadow-[0_14px_28px_rgba(91,70,220,0.42)]";
-
-  const chevronIdleClass = dark
-    ? "bg-[#131526] text-[#d7d2ff] hover:bg-[#1a1c33] hover:text-white"
-    : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900";
+    if (academicItems.includes(selected)) {
+      setAcademicOpen(true);
+    }
+    if (myClassesItems.includes(selected)) {
+      setMyClassesOpen(true);
+    }
+  }, [selected]);
 
   return (
     <>
@@ -62,59 +62,218 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
           </div>
         </div>
 
-        <nav className="scrollbar-sidebar scrollbar-hide flex-1 space-y-1.5 overflow-y-auto px-4 py-5">
-          <div className="rounded-2xl border border-transparent transition">
-            <div className="p-1">
-              <div className="flex items-stretch overflow-hidden rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelect("Teacher Page");
-                  }}
-                  className={`flex flex-1 items-center gap-3 px-3.5 py-3 text-left text-sm font-medium transition ${
-                    selected === "Teacher Page" ? headerActiveClass : headerIdleClass
+        <nav className="scrollbar-sidebar flex-1 space-y-1.5 overflow-y-auto px-4 py-5">
+          {navItems.map((item) => {
+            const active = selected === item;
+            const Icon = teacherNavIconMap[item];
+            return (
+              <button
+                key={item}
+                type="button"
+                onClick={() => onSelect(item)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
+                  active
+                    ? dark
+                      ? "bg-[#7c4dff] text-white"
+                      : "bg-blue-600 text-white shadow-md"
+                    : dark
+                      ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    active ? "bg-white/15" : dark ? "" : "bg-slate-100"
                   }`}
                 >
-                  <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                      selected === "Teacher Page" ? "bg-white/15" : dark ? "bg-white/5" : "bg-slate-100"
-                    }`}
-                  >
-                    {(() => {
-                      const Icon = teacherNavIconMap["Teacher Page"];
-                      return Icon ? <Icon className="h-5 w-5" /> : null;
-                    })()}
-                  </span>
-                  <span>Teacher Page</span>
-                </button>
+                  {Icon ? <Icon className="h-5 w-5" /> : null}
+                </span>
+                <span>{item}</span>
+              </button>
+            );
+          })}
 
-                <button
-                  type="button"
-                  aria-label={teacherMenuOpen ? "Collapse teacher pages" : "Expand teacher pages"}
-                  onClick={() => setTeacherMenuOpen((value) => !value)}
-                  className={`flex w-12 items-center justify-center text-sm transition ${chevronIdleClass}`}
+          <div className="space-y-1.5">
+            <div className="flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => onSelect("My Classes")}
+                className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
+                  myClassesItems.includes(selected)
+                    ? dark
+                      ? "bg-[#7c4dff] text-white"
+                      : "bg-gradient-to-r from-[#6f58ff] to-[#4b36d2] text-white shadow-[0_14px_28px_rgba(91,70,220,0.42)]"
+                    : dark
+                      ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    myClassesItems.includes(selected) ? "bg-white/15" : dark ? "" : "bg-slate-100"
+                  }`}
                 >
-                  <IconChevronDown className={`h-4 w-4 transition-transform duration-300 ${teacherMenuOpen ? "rotate-180" : ""}`} />
-                </button>
-              </div>
+                  {MyClassesIcon ? <MyClassesIcon className="h-5 w-5" /> : null}
+                </span>
+                <span className="min-w-0 flex-1 truncate">My Classes</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMyClassesOpen((value) => !value)}
+                className={`flex h-auto items-center justify-center rounded-xl px-3 transition ${
+                  myClassesItems.includes(selected)
+                    ? dark
+                      ? "bg-[#7c4dff] text-white"
+                      : "bg-gradient-to-r from-[#6f58ff] to-[#4b36d2] text-white"
+                    : dark
+                      ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+                aria-label="Toggle My Classes menu"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`h-4 w-4 transition-transform ${myClassesOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
             </div>
 
-            <div
-              className={`grid overflow-hidden transition-all duration-300 ease-out ${
-                teacherMenuOpen ? "grid-rows-[1fr] pb-3 opacity-100" : "grid-rows-[0fr] pb-0 opacity-0"
+            {myClassesOpen ? (
+              <div className="ml-3 space-y-1 border-l border-white/10 pl-3">
+                {["Class Time Table", "Monthly Syllabus", "Assigned Duties"].map((item) => {
+                  const active = selected === item;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => onSelect(item)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
+                        active
+                          ? dark
+                            ? "bg-white/[0.08] text-white"
+                            : "bg-blue-50 text-blue-700"
+                          : dark
+                            ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-current" : "bg-current opacity-50"}`} />
+                      <span className="truncate">{item}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => onSelect("Academic Records")}
+                className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
+                  academicItems.includes(selected)
+                    ? dark
+                      ? "bg-[#7c4dff] text-white"
+                      : "bg-gradient-to-r from-[#6f58ff] to-[#4b36d2] text-white shadow-[0_14px_28px_rgba(91,70,220,0.42)]"
+                    : dark
+                      ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    academicItems.includes(selected) ? "bg-white/15" : dark ? "" : "bg-slate-100"
+                  }`}
+                >
+                  {AcademicIcon ? <AcademicIcon className="h-5 w-5" /> : null}
+                </span>
+                <span className="min-w-0 flex-1 truncate">Academic Records</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAcademicOpen((value) => !value)}
+                className={`flex h-auto items-center justify-center rounded-xl px-3 transition ${
+                  academicItems.includes(selected)
+                    ? dark
+                      ? "bg-[#7c4dff] text-white"
+                      : "bg-gradient-to-r from-[#6f58ff] to-[#4b36d2] text-white"
+                    : dark
+                      ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+                aria-label="Toggle Academic Records menu"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`h-4 w-4 transition-transform ${academicOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+
+            {academicOpen ? (
+              <div className="ml-3 space-y-1 border-l border-white/10 pl-3">
+                {[
+                  "Roll No Slips Management",
+                  "Paper, Date Sheet & Result",
+                ].map((item) => {
+                  const active = selected === item;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => onSelect(item)}
+                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition ${
+                        active
+                          ? dark
+                            ? "bg-white/[0.08] text-white"
+                            : "bg-blue-50 text-blue-700"
+                          : dark
+                            ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-current" : "bg-current opacity-50"}`} />
+                      <span className="truncate">{item}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onSelect("Reports")}
+            className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left text-sm font-medium transition ${
+              selected === "Reports"
+                ? dark
+                  ? "bg-[#7c4dff] text-white"
+                  : "bg-blue-600 text-white shadow-md"
+                : dark
+                  ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            <span
+              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                selected === "Reports" ? "bg-white/15" : dark ? "" : "bg-slate-100"
               }`}
             >
-              <div className="min-h-0 overflow-hidden">
-                <TeacherNavSubmenu
-                  items={TEACHER_PORTAL_SUBPAGES}
-                  selected={selected}
-                  onSelect={onSelect}
-                  dark={dark}
-                  onDarkSidebar={dark}
-                />
-              </div>
-            </div>
-          </div>
+              {ReportsIcon ? <ReportsIcon className="h-5 w-5" /> : null}
+            </span>
+            <span>Reports</span>
+          </button>
         </nav>
 
         <div className="p-4">
@@ -122,7 +281,9 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
             type="button"
             onClick={() => setShowLogoutConfirm(true)}
             className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium transition ${
-              dark ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white" : "text-rose-600 hover:bg-rose-50"
+              dark
+                ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                : "text-rose-600 hover:bg-rose-50"
             }`}
           >
             <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${dark ? "" : "bg-rose-50"}`}>
@@ -135,6 +296,9 @@ export default function TeacherSidebar({ selected, onSelect, onLogout, dark = tr
 
       <LogoutConfirmModal
         open={showLogoutConfirm}
+        contextLabel={user?.fullName || "Teacher"}
+        message="Are you sure you want to end this teacher session? Unsaved work should be saved before leaving."
+        note="You can sign back in anytime with your teacher account."
         onCancel={() => setShowLogoutConfirm(false)}
         onConfirm={() => {
           setShowLogoutConfirm(false);
