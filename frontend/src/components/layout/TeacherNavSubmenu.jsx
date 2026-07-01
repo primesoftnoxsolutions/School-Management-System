@@ -64,10 +64,7 @@ export default function TeacherNavSubmenu({
               {SubIcon ? <SubIcon className="h-4 w-4" /> : null}
             </span>
             {isAssignedClassesPage ? (
-              <span className="leading-tight">
-                <span className="block">Assigned Classes</span>
-                <span className="block">&amp; Sections</span>
-              </span>
+              <span className="truncate">Assigned Classes</span>
             ) : (
               <span className="truncate">{subpage}</span>
             )}

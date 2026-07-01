@@ -66,11 +66,24 @@ function createEmptyClassAssignment(className) {
   };
 }
 
-function syncSectionData(sections, subjectsMap = {}, poolsMap = {}) {
+function collectClassSubjects(sectionSubjects = {}) {
+  const subjects = [];
+  Object.values(sectionSubjects || {}).forEach((list) => {
+    (Array.isArray(list) ? list : []).forEach((subject) => {
+      if (!subjects.includes(subject)) {
+        subjects.push(subject);
+      }
+    });
+  });
+  return subjects;
+}
+
+function syncSectionData(sections, subjectsMap = {}, poolsMap = {}, fallbackSubjects = []) {
   const sectionSubjects = {};
   const sectionSubjectPools = {};
-  sections.forEach((section) => {
-    sectionSubjects[section] = subjectsMap[section] || [];
+  sections.forEach((section, index) => {
+    const existingSubjects = Array.isArray(subjectsMap[section]) ? subjectsMap[section] : [];
+    sectionSubjects[section] = existingSubjects.length ? existingSubjects : index === 0 ? [...fallbackSubjects] : [];
     sectionSubjectPools[section] = poolsMap[section]?.length ? poolsMap[section] : [...SUBJECT_OPTIONS];
   });
   return { sectionSubjects, sectionSubjectPools };
@@ -92,59 +105,116 @@ function syncClassAssignments(selectedClasses, existingAssignments = []) {
   });
 }
 
+function getNextAvailableSection(selectedSections = []) {
+  return SECTION_OPTIONS.find((section) => !selectedSections.includes(section)) || "";
+}
+
 function ClassAssignmentCard({
   assignment,
   sectionOptions,
   subjectOptions,
   dark,
+  classIndex = 0,
   onSectionsChange,
-  onClassSubjectsChange,
-  onSectionPoolChange,
   onSectionSubjectsChange,
+  onSectionSubjectPoolChange,
+  onAddSection,
+  onRemoveSection,
 }) {
-  const subjectLabel = assignment.sections.length
-    ? `Section ${assignment.sections[0]} - Subjects`
-    : "Subjects (multiple)";
-  const subjectPlaceholder = assignment.sections.length ? `Select subjects for Section ${assignment.sections[0]}` : "Select subjects";
+  const sections = assignment.sections || [];
+  const sectionCount = sections.length;
 
   return (
-    <div
-      className={`space-y-3 rounded-xl border p-3 ${
-        dark ? "border-white/[0.06] bg-[#1a1b26]/60" : "border-slate-200 bg-slate-50/60"
-      }`}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#7c4dff]" : "text-indigo-600"}`}>
-            Class Assignment
+    <div className={`overflow-hidden rounded-2xl border ${dark ? "border-white/[0.08] bg-[#161722]" : "border-slate-200 bg-white"}`}>
+      <div className={`flex items-center justify-between gap-3 border-b px-4 py-3 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+        <div className="min-w-0">
+          <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+            Class
           </p>
-          <h5 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>{assignment.className}</h5>
+          <h5 className={`truncate text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>{assignment.className}</h5>
         </div>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${dark ? "bg-white/[0.06] text-[#9e9e9e]" : "bg-slate-50 text-slate-600"}`}>
+          {sectionCount} Section{sectionCount === 1 ? "" : "s"}
+        </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <ScrollableMultiSelect
-          label="Sections (multiple)"
-          placeholder="Select sections"
-          values={assignment.sections}
-          options={sectionOptions}
-          onChange={onSectionsChange}
-          required
-          openUpward
-          dark={dark}
-        />
+      <div className="px-4 py-4">
+        <div className={`grid grid-cols-[72px_minmax(0,1fr)] gap-3 border-b pb-2 text-xs font-semibold ${dark ? "border-white/[0.06] text-[#9e9e9e]" : "border-slate-100 text-slate-500"}`}>
+          <div>Section</div>
+          <div>Assign Subjects</div>
+        </div>
+        <div className="space-y-3 pt-3">
+          {sections.length ? (
+            [...sections]
+              .sort(
+                (a, b) => sectionOptions.findIndex((opt) => opt.value === a) - sectionOptions.findIndex((opt) => opt.value === b)
+              )
+              .map((section, index) => {
+              const sectionSubjects = assignment.sectionSubjects?.[section] || [];
+              const sectionSubjectOptions = assignment.sectionSubjectPools?.[section]?.length
+                ? assignment.sectionSubjectPools[section].map((item) => ({ value: item, label: item }))
+                : subjectOptions;
 
-        <div className="space-y-3">
-          <ScrollableMultiSelect
-            label={subjectLabel}
-            placeholder={subjectPlaceholder}
-            values={assignment.classSubjects || []}
-            options={subjectOptions}
-            onChange={onClassSubjectsChange}
-            required
-            openUpward
-            dark={dark}
-          />
+              return (
+                <div key={section} className="grid grid-cols-[72px_minmax(0,1fr)_24px] items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-semibold ${
+                        dark ? "bg-white/[0.06] text-white" : "bg-slate-50 text-slate-700"
+                      }`}
+                    >
+                      {section}
+                    </div>
+                    <p className={`hidden text-sm ${dark ? "text-white" : "text-slate-800"}`}>Section {section}</p>
+                  </div>
+
+                  <SubjectManager
+                    label=""
+                    placeholder={`Select subjects for Section ${section}`}
+                    subjects={sectionSubjectOptions.map((item) => item.value)}
+                    selected={sectionSubjects}
+                    onSubjectsChange={(subjects) => onSectionSubjectPoolChange?.(section, subjects)}
+                    onSelectedChange={(subjects) => onSectionSubjectsChange(section, subjects)}
+                    dark={dark}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => onRemoveSection?.(section)}
+                    disabled={sections.length <= 1}
+                    className={`flex h-7 w-7 items-center justify-center rounded-md transition disabled:cursor-not-allowed disabled:opacity-30 ${
+                      dark ? "text-rose-300 hover:bg-rose-500/10" : "text-rose-500 hover:bg-rose-50"
+                    }`}
+                    aria-label={`Remove section ${section}`}
+                    title={`Remove section ${section}`}
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7L5 21M5 7l14 14" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })
+          ) : null}
+        </div>
+
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              const nextSection = getNextAvailableSection(sections);
+              if (nextSection) onAddSection?.(nextSection);
+            }}
+            disabled={sections.length >= SECTION_OPTIONS.length}
+            className={`flex w-full items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${
+              dark
+                ? "border-white/[0.14] text-[#9e9e9e] hover:bg-white/[0.04]"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <span className="text-lg leading-none">+</span>
+            Add Section
+          </button>
         </div>
       </div>
     </div>
@@ -161,16 +231,17 @@ function ClassAssignmentFields({
   onClassNamesChange,
   onBranchChange,
   onClassAssignmentSectionsChange,
-  onClassAssignmentSubjectsChange,
-  onClassAssignmentSectionPoolChange,
   onClassAssignmentSectionSubjectsChange,
+  onClassAssignmentSectionPoolChange,
+  onClassAssignmentAddSection,
+  onClassAssignmentRemoveSection,
   dark,
 }) {
   const assignments = form.classAssignments || [];
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <ScrollableMultiSelect
           label="Classes"
           placeholder="Select classes"
@@ -196,7 +267,7 @@ function ClassAssignmentFields({
 
       {hasNoAssignment ? (
         <div
-          className={`rounded-xl border px-4 py-3 text-sm ${
+          className={`rounded-2xl border px-4 py-3 text-sm ${
             dark ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e]" : "border-slate-200 bg-slate-50 text-slate-600"
           }`}
         >
@@ -205,22 +276,24 @@ function ClassAssignmentFields({
       ) : null}
 
       {!hasNoAssignment && assignments.length ? (
-        <div className="space-y-4">
-          {assignments.map((assignment) => (
+        <div className="scrollbar-app max-h-[46vh] space-y-5 overflow-y-auto pr-2">
+          {assignments.map((assignment, index) => (
             <ClassAssignmentCard
               key={assignment.className}
               assignment={assignment}
               sectionOptions={sectionOptions}
               subjectOptions={subjectOptions}
               dark={dark}
+              classIndex={index}
               onSectionsChange={(sections) => onClassAssignmentSectionsChange(assignment.className, sections)}
-              onClassSubjectsChange={(subjects) => onClassAssignmentSubjectsChange(assignment.className, subjects)}
-              onSectionPoolChange={(section, subjects) =>
-                onClassAssignmentSectionPoolChange(assignment.className, section, subjects)
-              }
               onSectionSubjectsChange={(section, subjects) =>
                 onClassAssignmentSectionSubjectsChange(assignment.className, section, subjects)
               }
+              onSectionSubjectPoolChange={(section, subjects) =>
+                onClassAssignmentSectionPoolChange(assignment.className, section, subjects)
+              }
+              onAddSection={(section) => onClassAssignmentAddSection(assignment.className, section)}
+              onRemoveSection={(section) => onClassAssignmentRemoveSection(assignment.className, section)}
             />
           ))}
         </div>
@@ -238,7 +311,11 @@ export function buildAssignmentsFromSelection(classNameOrAssignments, branch, se
       const className = String(block.className || "").trim();
       if (!className || isNoAssignClass(className)) continue;
       for (const section of block.sections || []) {
-        const subjects = block.sectionSubjects?.[section] || [];
+        const subjects = block.sectionSubjects?.[section]?.length
+          ? block.sectionSubjects[section]
+          : block.classSubjects?.length
+            ? block.classSubjects
+            : [];
         for (const subject of subjects) {
           assignments.push({ className, branch: normalizedBranch, section, subject });
         }
@@ -444,34 +521,57 @@ export default function CreateTeacherWizard({
         const { sectionSubjects, sectionSubjectPools } = syncSectionData(
           sections,
           assignment.sectionSubjects,
-          assignment.sectionSubjectPools
+          assignment.sectionSubjectPools,
+          assignment.classSubjects
         );
-        const defaultSubjects = assignment.classSubjects || [];
-        const seededSectionSubjects = {};
-        const seededSectionSubjectPools = {};
-        sections.forEach((section) => {
-          seededSectionSubjects[section] = sectionSubjects[section]?.length ? sectionSubjects[section] : defaultSubjects;
-          seededSectionSubjectPools[section] = sectionSubjectPools[section] || [...SUBJECT_OPTIONS];
-        });
-        return { ...assignment, sections, sectionSubjects: seededSectionSubjects, sectionSubjectPools: seededSectionSubjectPools };
+        return {
+          ...assignment,
+          sections,
+          sectionSubjects,
+          sectionSubjectPools,
+          classSubjects: collectClassSubjects(sectionSubjects),
+        };
       }),
     }));
     onDismissError?.();
   };
 
-  const handleClassAssignmentSubjectsChange = (className, subjects) => {
+  const handleClassAssignmentAddSection = (className, section) => {
     setForm((prev) => ({
       ...prev,
       classAssignments: (prev.classAssignments || []).map((assignment) =>
         assignment.className === className
           ? {
               ...assignment,
-              classSubjects: subjects,
+              sections: [...new Set([...(assignment.sections || []), section])],
+              sectionSubjects: {
+                ...(assignment.sectionSubjects || {}),
+                [section]: assignment.sectionSubjects?.[section] || [],
+              },
+              sectionSubjectPools: {
+                ...(assignment.sectionSubjectPools || {}),
+                [section]: assignment.sectionSubjectPools?.[section] || [...SUBJECT_OPTIONS],
+              },
+            }
+          : assignment
+      ),
+    }));
+    onDismissError?.();
+  };
+
+  const handleClassAssignmentRemoveSection = (className, section) => {
+    setForm((prev) => ({
+      ...prev,
+      classAssignments: (prev.classAssignments || []).map((assignment) =>
+        assignment.className === className
+          ? {
+              ...assignment,
+              sections: (assignment.sections || []).filter((item) => item !== section),
               sectionSubjects: Object.fromEntries(
-                Object.entries(assignment.sectionSubjects || {}).map(([section, selected]) => [
-                  section,
-                  selected.length ? selected : subjects,
-                ])
+                Object.entries(assignment.sectionSubjects || {}).filter(([key]) => key !== section)
+              ),
+              sectionSubjectPools: Object.fromEntries(
+                Object.entries(assignment.sectionSubjectPools || {}).filter(([key]) => key !== section)
               ),
             }
           : assignment
@@ -491,6 +591,10 @@ export default function CreateTeacherWizard({
                 ...assignment.sectionSubjects,
                 [section]: subjects,
               },
+              classSubjects: collectClassSubjects({
+                ...(assignment.sectionSubjects || {}),
+                [section]: subjects,
+              }),
             }
           : assignment
       ),
@@ -644,14 +748,10 @@ export default function CreateTeacherWizard({
         </div>
       ) : (
         <div className="wizard-step-enter">
-          <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#7c4dff]" : "text-indigo-600"}`}>
-            Step 2
-          </p>
+          <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#7c4dff]" : "text-indigo-600"}`}>Step 2</p>
           <h4 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>Class Assignments</h4>
           {form.fullName ? (
-            <p className={`mt-1 text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-              Assigning classes for {form.fullName}
-            </p>
+            <p className={`mt-1 text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Assigning classes for {form.fullName}</p>
           ) : null}
         </div>
       )}
@@ -736,23 +836,30 @@ export default function CreateTeacherWizard({
           ) : null}
 
           {step === 2 ? (
-            <div className="space-y-4">
-              <h4 className={`text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>Class Assignments</h4>
-              <ClassAssignmentFields
-                form={form}
-                classOptions={classOptions}
-                branchOptions={branchOptions}
-                sectionOptions={sectionOptions}
-                subjectOptions={subjectOptions}
-                hasNoAssignment={hasNoAssignment}
-                onClassNamesChange={handleClassNamesChange}
-                onBranchChange={handleBranchChange}
-                onClassAssignmentSectionsChange={handleClassAssignmentSectionsChange}
-                onClassAssignmentSubjectsChange={handleClassAssignmentSubjectsChange}
-                onClassAssignmentSectionPoolChange={handleClassAssignmentSectionPoolChange}
-                onClassAssignmentSectionSubjectsChange={handleClassAssignmentSectionSubjectsChange}
-                dark={dark}
-              />
+            <div className="space-y-3">
+              <div className={`rounded-[24px] border p-4 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white shadow-sm"}`}>
+                <div className="mb-4">
+                  <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${dark ? "text-[#7c4dff]" : "text-indigo-600"}`}>
+                    Select Classes &amp; Branch
+                  </p>
+                </div>
+                <ClassAssignmentFields
+                  form={form}
+                  classOptions={classOptions}
+                  branchOptions={branchOptions}
+                  sectionOptions={sectionOptions}
+                  subjectOptions={subjectOptions}
+                  hasNoAssignment={hasNoAssignment}
+                  onClassNamesChange={handleClassNamesChange}
+                  onBranchChange={handleBranchChange}
+                  onClassAssignmentSectionsChange={handleClassAssignmentSectionsChange}
+                  onClassAssignmentSectionSubjectsChange={handleClassAssignmentSectionSubjectsChange}
+                  onClassAssignmentSectionPoolChange={handleClassAssignmentSectionPoolChange}
+                  onClassAssignmentAddSection={handleClassAssignmentAddSection}
+                  onClassAssignmentRemoveSection={handleClassAssignmentRemoveSection}
+                  dark={dark}
+                />
+              </div>
             </div>
           ) : null}
 
@@ -829,9 +936,10 @@ export default function CreateTeacherWizard({
               onClassNamesChange={handleClassNamesChange}
               onBranchChange={handleBranchChange}
               onClassAssignmentSectionsChange={handleClassAssignmentSectionsChange}
-              onClassAssignmentSubjectsChange={handleClassAssignmentSubjectsChange}
-              onClassAssignmentSectionPoolChange={handleClassAssignmentSectionPoolChange}
               onClassAssignmentSectionSubjectsChange={handleClassAssignmentSectionSubjectsChange}
+              onClassAssignmentSectionPoolChange={handleClassAssignmentSectionPoolChange}
+              onClassAssignmentAddSection={handleClassAssignmentAddSection}
+              onClassAssignmentRemoveSection={handleClassAssignmentRemoveSection}
               dark={dark}
             />
           </div>

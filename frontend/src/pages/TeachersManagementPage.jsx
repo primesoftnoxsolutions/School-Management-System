@@ -1,4 +1,6 @@
+import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import api from "../services/api/client";
 import FormModal from "../components/ui/FormModal";
 import CreateTeacherWizard, {
@@ -10,9 +12,7 @@ import CreateTeacherWizard, {
 import TeacherRemoveModal from "../components/teachers/TeacherRemoveModal";
 import TeacherAssignmentHistoryModal from "../components/teachers/TeacherAssignmentHistoryModal";
 import TeacherLoginDetailsModal from "../components/teachers/TeacherLoginDetailsModal";
-import TeacherProfilesModal from "../components/teachers/TeacherProfilesModal";
 import TablePagination from "../components/ui/TablePagination";
-import { CLASS_OPTIONS, SECTION_OPTIONS, SUBJECT_OPTIONS } from "../constants/classes";
 
 function IconUsers() {
   return (
@@ -21,7 +21,6 @@ function IconUsers() {
     </svg>
   );
 }
-
 function IconSearch() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -29,7 +28,6 @@ function IconSearch() {
     </svg>
   );
 }
-
 function IconFilter() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
@@ -46,11 +44,15 @@ function IconHistory() {
   );
 }
 
-function IconProfile() {
+function IconKey() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19a6 6 0 10-6 0" />
-      <circle cx="12" cy="9" r="3.2" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.5 7.5a4 4 0 11-5.6 5.6L4 19v-3H1v-3l5.9-5.9a4 4 0 018.6.4z"
+      />
+      <circle cx="15" cy="9" r="1.5" />
     </svg>
   );
 }
@@ -76,6 +78,104 @@ function IconUserMinus() {
   return (
     <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
       <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 11h-6" />
+    </svg>
+  );
+}
+
+function IconUploadArrow({ className = "h-5 w-5" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 16V5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 9.5L12 5l4.5 4.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 19a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5Z" />
+    </svg>
+  );
+}
+
+function IconSpreadsheet({ className = "h-12 w-12" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M14 3v5h5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 11h8M8 15h8" />
+    </svg>
+  );
+}
+
+function IconCloudUpload({ className = "h-16 w-16" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 18a4.5 4.5 0 1 1 0-9 5.5 5.5 0 0 1 10.55 1.68A3.75 3.75 0 1 1 18.5 18H7.5Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V8.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 11.5 12 9l2.5 2.5" />
+    </svg>
+  );
+}
+
+function IconImportAction({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15V4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 7.5 12 4l3.5 3.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 20h14a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1Z" />
+    </svg>
+  );
+}
+
+function ImportIllustration() {
+  return (
+    <svg viewBox="0 0 360 380" className="h-full w-full" aria-hidden="true">
+      <defs>
+        <linearGradient id="imp-grad-base" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#F2ECFF" />
+          <stop offset="100%" stopColor="#DCD2FF" />
+        </linearGradient>
+        <linearGradient id="imp-grad-card" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#F6F3FF" />
+        </linearGradient>
+        <linearGradient id="imp-grad-purple" x1="0%" x2="100%" y1="0%" y2="100%">
+          <stop offset="0%" stopColor="#7C4DFF" />
+          <stop offset="100%" stopColor="#5B35E5" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="360" height="380" rx="24" fill="url(#imp-grad-base)" opacity="0.45" />
+      <path d="M60 124c40 0 64 36 64 72" fill="none" stroke="#C9C1FF" strokeDasharray="5 8" strokeWidth="2" />
+      <circle cx="78" cy="142" r="9" fill="none" stroke="#B9B0FF" strokeWidth="2" />
+      <circle cx="238" cy="120" r="6" fill="#B3A7FF" opacity="0.7" />
+      <circle cx="214" cy="170" r="5" fill="#B7A9FF" opacity="0.65" />
+      <circle cx="260" cy="250" r="7" fill="#B7A9FF" opacity="0.6" />
+      <circle cx="88" cy="238" r="5" fill="#B8ABFF" opacity="0.7" />
+      <path d="M42 282h44l-18 28H24z" fill="#8E5CFF" opacity="0.25" />
+      <path d="M48 278h44l-16 24H30z" fill="#7C4DFF" opacity="0.5" />
+      <rect x="106" y="236" width="150" height="118" rx="16" fill="url(#imp-grad-card)" stroke="#E4DDFF" />
+      <g transform="translate(121 257)">
+        <rect x="0" y="0" width="44" height="44" rx="6" fill="#1F8B4C" />
+        <rect x="9" y="11" width="8" height="22" rx="2" fill="#FFFFFF" opacity="0.95" />
+        <path d="M12 11h11v4h-11z" fill="#FFFFFF" opacity="0.95" />
+        <path d="M21 11h7v22h-7z" fill="#FFFFFF" opacity="0.85" />
+        <path d="M21 18h7" stroke="#1F8B4C" strokeWidth="1.5" />
+        <path d="M21 24h7" stroke="#1F8B4C" strokeWidth="1.5" />
+      </g>
+      <rect x="175" y="260" width="61" height="8" rx="4" fill="#E3E5F0" />
+      <rect x="175" y="275" width="53" height="8" rx="4" fill="#E3E5F0" />
+      <rect x="175" y="290" width="44" height="8" rx="4" fill="#E3E5F0" />
+      <path d="M126 314h104" stroke="#D5D8E9" strokeWidth="6" strokeLinecap="round" />
+      <path d="M126 329h78" stroke="#E3E5F0" strokeWidth="6" strokeLinecap="round" />
+      <ellipse cx="184" cy="350" rx="118" ry="16" fill="#8A63FF" opacity="0.18" />
+      <ellipse cx="184" cy="344" rx="96" ry="12" fill="#7C4DFF" opacity="0.3" />
+      <ellipse cx="184" cy="338" rx="76" ry="10" fill="#6A3DF0" opacity="0.45" />
+      <circle cx="272" cy="226" r="16" fill="#6A3DF0" opacity="0.85" />
+      <path d="M278 216l11 4-3 11-12-3z" fill="#FFB26B" opacity="0.95" />
+      <rect x="150" y="42" width="44" height="44" rx="22" fill="#E2D9FF" />
+      <path d="M160 60h10v12h-10z" fill="none" stroke="#5C43E6" strokeWidth="2.2" />
+      <path d="M170 50v12h12" fill="none" stroke="#5C43E6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M172 64v14" fill="none" stroke="#5C43E6" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="M166 58l6-6 6 6" fill="none" stroke="#5C43E6" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -125,75 +225,430 @@ function StatusPill({ active, dark = false }) {
   );
 }
 
-function subjectSortIndex(subject) {
-  const idx = SUBJECT_OPTIONS.indexOf(subject || "Class Teacher");
-  return idx === -1 ? SUBJECT_OPTIONS.length : idx;
-}
-
-function groupAssignedClasses(assignedClasses = []) {
-  const groups = new Map();
-
-  assignedClasses.forEach((item) => {
-    const section = item.section || "A";
-    const branch = item.branch === "Boys" ? "Boys" : "Girls";
-    const key = `${branch}|${item.className}|${section}`;
-    if (!groups.has(key)) {
-      groups.set(key, {
-        branch,
-        className: item.className,
-        section,
-        subjects: new Set(),
-      });
-    }
-    groups.get(key).subjects.add(item.subject || "Class Teacher");
-  });
-
-  return [...groups.values()]
-    .sort((a, b) => {
-      const classDiff = CLASS_OPTIONS.indexOf(a.className) - CLASS_OPTIONS.indexOf(b.className);
-      if (classDiff !== 0) return classDiff;
-      return SECTION_OPTIONS.indexOf(a.section) - SECTION_OPTIONS.indexOf(b.section);
-    })
-    .map((group) => {
-      const classLabel = `${group.branch} · ${group.className} ${group.section}`;
-      const subjects = [...group.subjects].sort((a, b) => subjectSortIndex(a) - subjectSortIndex(b));
-      return {
-        key: `${group.branch}|${group.className}|${group.section}`,
-        classLabel,
-        subjects,
-        display: `${classLabel}, ${subjects.join(", ")}`,
-      };
-    });
-}
-
-function ClassBadge({ assignedClasses = [], dark = false }) {
-  if (!assignedClasses.length) {
-    return (
-      <span
-        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-          dark ? "bg-[#ff9800]/15 text-[#ff9800]" : "bg-amber-50 text-amber-700"
-        }`}
-      >
-        Not assigned
-      </span>
-    );
-  }
-
-  const grouped = groupAssignedClasses(assignedClasses);
+function TeacherProfileField({ label, value, dark = false, className = "" }) {
+  const displayValue = value === undefined || value === null || value === "" ? "-" : value;
 
   return (
-    <div className="flex flex-wrap gap-1">
-      {grouped.map((group) => (
-        <span
-          key={group.key}
-          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-            dark ? "bg-[#7c4dff]/15 text-[#7c4dff]" : "bg-indigo-50 text-indigo-700"
+    <div className={className}>
+      <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>{label}</p>
+      <p className={`mt-1 text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>{displayValue}</p>
+    </div>
+  );
+}
+
+function getTeacherAssignmentSummary(assignedClasses = []) {
+  const classNames = new Set();
+  const sections = new Set();
+
+  assignedClasses.forEach((item) => {
+    if (item.className) classNames.add(item.className);
+    if (item.section) sections.add(item.section);
+  });
+
+  return {
+    classes: classNames.size,
+    sections: sections.size,
+  };
+}
+
+function TeacherProfileModal({ teacher, dark = false, onClose, onSave }) {
+  const safeTeacher = teacher || {};
+  const assignedClasses = safeTeacher.assignedClasses || [];
+  const profile = safeTeacher.profile || {};
+  const fullName = safeTeacher.fullName || "Teacher Profile";
+  const summary = getTeacherAssignmentSummary(assignedClasses);
+  const createdDate = safeTeacher.createdAt
+    ? new Date(safeTeacher.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "";
+  const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber || "");
+  const [salary, setSalary] = useState(profile.salary != null ? String(profile.salary) : "");
+  const [address, setAddress] = useState(profile.address || "");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    setPhoneNumber(profile.phoneNumber || "");
+    setSalary(profile.salary != null ? String(profile.salary) : "");
+    setAddress(profile.address || "");
+    setSaveError("");
+    setSavingProfile(false);
+  }, [profile.address, profile.phoneNumber, profile.salary, safeTeacher._id]);
+
+  const handleSave = async () => {
+    setSavingProfile(true);
+    setSaveError("");
+    try {
+      await onSave?.(safeTeacher._id, {
+        phoneNumber: phoneNumber.trim(),
+        salary: salary.trim(),
+        address: address.trim(),
+      });
+    } catch (err) {
+      setSaveError(err?.response?.data?.message || err?.message || "Failed to update teacher profile");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  if (!teacher) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[130] flex items-center justify-center overflow-y-auto bg-slate-900/40 px-4 py-8 backdrop-blur-[2px]"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        className={`modal-panel-enter w-full max-w-lg overflow-hidden rounded-2xl border ${
+          dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
+        }`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div
+          className={`border-b px-6 py-5 ${
+            dark ? "border-white/[0.06] bg-[#1a1b26]" : "border-slate-100 bg-gradient-to-r from-slate-50 to-white"
           }`}
         >
-          {group.display}
-        </span>
-      ))}
-    </div>
+          <div className="flex items-center gap-4">
+            <TeacherAvatar name={safeTeacher.fullName} />
+            <div className="min-w-0">
+              <h3 className={`text-lg font-bold ${dark ? "text-white" : "text-slate-900"}`}>{fullName}</h3>
+              <p className={`text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>{safeTeacher.email || "-"}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <StatusPill active={safeTeacher.isActive} dark={dark} />
+                {createdDate ? <span className={`text-xs ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Created {createdDate}</span> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4 px-6 py-5 text-sm">
+          <div className={`grid grid-cols-1 gap-3 border-b pb-4 sm:grid-cols-2 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+            <TeacherProfileField label="Assigned Classes" value={summary.classes} dark={dark} />
+            <TeacherProfileField label="Assigned Sections" value={summary.sections} dark={dark} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-2">
+            <TeacherProfileField label="Qualification" value={profile.qualification} dark={dark} />
+            <TeacherProfileField label="Joining Date" value={createdDate} dark={dark} />
+            <TeacherProfileField label="Designation" value={profile.designation} dark={dark} />
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Phone Number</p>
+              <input
+                type="text"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className={`mt-1 w-full border-0 bg-transparent p-0 text-sm font-semibold outline-none shadow-none ${
+                  dark ? "text-white placeholder:text-[#7f8197]" : "text-slate-900 placeholder:text-slate-400"
+                }`}
+              />
+            </div>
+            <div>
+              <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Salary</p>
+              <input
+                type="text"
+                value={salary}
+                onChange={(e) => setSalary(e.target.value)}
+                className={`mt-1 w-full border-0 bg-transparent p-0 text-sm font-semibold outline-none shadow-none ${
+                  dark ? "text-white placeholder:text-[#7f8197]" : "text-slate-900 placeholder:text-slate-400"
+                }`}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <p className={`text-xs font-semibold uppercase tracking-wide ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Address</p>
+              <textarea
+                rows={3}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className={`mt-1 w-full resize-none border-0 bg-transparent p-0 text-sm font-semibold outline-none shadow-none ${
+                  dark ? "text-white placeholder:text-[#7f8197]" : "text-slate-900 placeholder:text-slate-400"
+                }`}
+              />
+            </div>
+          </div>
+          {saveError ? (
+            <div className={`rounded-xl border px-4 py-3 text-sm ${dark ? "border-[#e91e63]/30 bg-[#e91e63]/10 text-[#e91e63]" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+              {saveError}
+            </div>
+          ) : null}
+        </div>
+
+        <div className={`flex justify-end border-t px-6 py-4 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={savingProfile}
+            className={`rounded-xl px-5 py-2.5 text-sm font-medium text-white ${
+              dark ? "bg-[#7c4dff] hover:bg-[#6a3df0]" : "ref-btn-primary"
+            }`}
+          >
+            {savingProfile ? "Saving..." : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className={`ml-2 rounded-xl border px-5 py-2.5 text-sm font-medium ${
+              dark
+                ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+      </div>,
+    document.body
+  );
+}
+
+function TeacherImportModal({ open, dark = false, onClose, onImport, importing = false }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState("");
+  const [uploadTone, setUploadTone] = useState("neutral");
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedFile(null);
+      setDragActive(false);
+      setUploadNotice("");
+      setUploadTone("neutral");
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const pickFile = () => fileInputRef.current?.click();
+
+  const importSelectedFile = async (file) => {
+    if (!file) return;
+    setSelectedFile(file);
+    setUploadNotice("Importing file...");
+    setUploadTone("neutral");
+    try {
+      await onImport(file);
+      setUploadNotice("All headings available in uploaded file.");
+      setUploadTone("success");
+    } catch (error) {
+      setUploadNotice(error?.message || "Failed to import file.");
+      setUploadTone("error");
+    }
+  };
+
+  const handleDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) await importSelectedFile(file);
+  };
+
+  return createPortal(
+    <div
+      className={`fixed inset-0 z-[130] flex items-center justify-center overflow-y-auto px-4 py-8 backdrop-blur-[2px] ${
+        dark ? "bg-slate-950/70" : "bg-slate-900/50"
+      }`}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !importing) onClose();
+      }}
+    >
+      <div
+        className={`modal-panel-enter w-full max-w-[1040px] overflow-hidden rounded-[28px] border ${
+          dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
+        }`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="grid min-h-[700px] grid-cols-1 lg:grid-cols-[310px_minmax(0,1fr)]">
+          <div
+            className={`relative overflow-hidden px-8 py-10 ${
+              dark
+                ? "bg-[linear-gradient(180deg,#151427_0%,#1c1734_56%,#241b43_100%)]"
+                : "bg-[linear-gradient(180deg,#f7f3ff_0%,#f3efff_56%,#ece4ff_100%)]"
+            }`}
+          >
+            <div className="relative z-10 flex h-full flex-col">
+              <div className="max-w-[270px]">
+                <h3 className={`text-[34px] font-semibold leading-[1.08] tracking-[-0.03em] ${dark ? "text-white" : "text-slate-900"}`}>
+                  Import Teachers
+                  <br />
+                  from <span className={dark ? "text-[#8b78ff]" : "text-[#5b46e5]"}>Excel</span>
+                </h3>
+                <div className="mt-3 h-1 w-10 rounded-full bg-[#7c4dff]" />
+                <p className={`mt-4 text-[16px] leading-7 ${dark ? "text-[#c9c4f0]" : "text-slate-600"}`}>
+                  Upload your Excel file to quickly add or update teacher records.
+                </p>
+              </div>
+
+              <div className="mt-auto pt-8">
+                <div className="relative mx-auto h-[260px] w-[240px]">
+                  <ImportIllustration />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className={`relative flex min-h-0 flex-col ${dark ? "bg-[#161722]" : "bg-white"}`}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={importing}
+              className={`absolute right-8 top-7 rounded-full p-1.5 transition disabled:opacity-50 ${
+                dark
+                  ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                  : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              }`}
+              aria-label="Close import modal"
+            >
+              <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div className={`flex min-h-0 flex-1 flex-col px-7 pb-5 pt-14 ${dark ? "bg-[#161722]" : "bg-white"}`}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={pickFile}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    pickFile();
+                  }
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+                className={`flex min-h-[360px] w-full cursor-pointer flex-col items-center justify-center rounded-[30px] border-2 border-dashed px-7 text-center transition ${
+                  dragActive
+                    ? "border-[#8b78ff] bg-[#f6f2ff]"
+                    : dark
+                      ? "border-[#4f4688] bg-[#1a1b26] hover:bg-[#1d1e2b]"
+                      : "border-[#c8beff] bg-white hover:bg-[#fcfbff]"
+                }`}
+              >
+                <div className={`flex h-24 w-24 items-center justify-center rounded-full ${dark ? "bg-[#2a2447] text-[#8b78ff]" : "bg-[#e7e1ff] text-[#5b46e5]"}`}>
+                  <IconCloudUpload className="h-12 w-12" />
+                </div>
+                <p className={`mt-8 text-[22px] font-semibold leading-tight ${dark ? "text-white" : "text-slate-900"}`}>
+                  Drag & drop your Excel file here
+                </p>
+                <p className={`mt-3 text-[18px] leading-none ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>or</p>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    pickFile();
+                  }}
+                  className="mt-4 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#6c58ef] to-[#5b35e5] px-12 py-3.5 text-[18px] font-semibold text-white shadow-[0_10px_24px_rgba(91,53,229,0.22)]"
+                >
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/40">
+                    <IconImportAction className="h-4 w-4" />
+                  </span>
+                  Browse File
+                </button>
+                <p className={`mt-3 text-[16px] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>Supports .xlsx, .xls, .csv files</p>
+                {selectedFile ? (
+                  <div
+                    className={`mt-5 inline-flex max-w-full items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-sm ${
+                      dark ? "border-white/[0.08] bg-[#1a1b26] text-white" : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    <IconImportAction className="h-4 w-4" />
+                    <span className="max-w-[360px] truncate">{selectedFile.name}</span>
+                  </div>
+                ) : null}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv,.json,.txt"
+                  className="hidden"
+                  onChange={(event) => {
+                    const nextFile = event.target.files?.[0] || null;
+                    if (nextFile) {
+                      importSelectedFile(nextFile);
+                    }
+                    event.target.value = "";
+                  }}
+                />
+              </div>
+
+              <div
+                className={`mt-5 rounded-[24px] px-6 py-5 shadow-[0_0_0_1px_rgba(91,70,229,0.08)] ${
+                  dark ? "bg-[#1a1b26] shadow-[0_0_0_1px_rgba(139,120,255,0.12)]" : "bg-[#f6f3ff]"
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`mt-0.5 flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${dark ? "bg-[#2a2447] text-[#8b78ff]" : "bg-[#e8e2ff] text-[#5b46e5]"}`}>
+                    <span className="text-2xl font-semibold">i</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-[18px] font-semibold leading-tight ${dark ? "text-white" : "text-slate-900"}`}>Required details:</p>
+                    <p className={`mt-2 text-[16px] leading-[1.6] ${dark ? "text-[#d7d2f3]" : "text-slate-800"}`}>
+                      Teacher Name, Created Date, Joining Date, Qualification, Designation, Assign Classes/Section, Branch, Phone Number, Salary, Address, Status.
+                    </p>
+                    <p className={`mt-3 text-[15px] leading-[1.55] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                      First row should contain headers, and each next row should contain teacher data.
+                    </p>
+                    {uploadNotice ? (
+                      <p
+                        className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          uploadTone === "success"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : uploadTone === "error"
+                              ? "bg-rose-50 text-rose-700"
+                              : "bg-white text-slate-500"
+                        }`}
+                      >
+                        {uploadNotice}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              <div className={`mt-6 flex items-center justify-end gap-3 border-t pt-5 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={importing}
+                  className={`rounded-xl border px-5 py-2.5 text-sm font-medium ${
+                    dark
+                      ? "border-white/[0.08] bg-[#1a1b26] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedFile) {
+                      onClose();
+                      return;
+                    }
+                    pickFile();
+                  }}
+                  disabled={importing}
+                  className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#6c58ef] to-[#5b35e5] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(91,53,229,0.22)] disabled:opacity-60"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/40">
+                    <IconImportAction className="h-4 w-4" />
+                  </span>
+                  Import Teachers
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -211,7 +666,7 @@ function ActivityStatusBadge({ status }) {
   );
 }
 
-export default function TeachersManagementPage({ dark = false, onToggleTheme, branchSection = "" }) {
+export default function TeachersManagementPage({ dark = false, onToggleTheme, branchSection = "", onAssignmentsUpdated }) {
   const [createForm, setCreateForm] = useState({ ...initialCreateTeacherForm });
   const [assignTeacherId, setAssignTeacherId] = useState(null);
   const [teacherModalMode, setTeacherModalMode] = useState(null);
@@ -227,11 +682,12 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
   const [createWizardKey, setCreateWizardKey] = useState(0);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showTeacherProfileModal, setShowTeacherProfileModal] = useState(false);
+  const [teacherProfile, setTeacherProfile] = useState(null);
   const [showLoginDetailsModal, setShowLoginDetailsModal] = useState(false);
   const [loginDetailsTeacher, setLoginDetailsTeacher] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [importing, setImporting] = useState(false);
-  const fileInputRef = useRef(null);
 
   const loadData = async (nextPage = page, nextSearch = search) => {
     setLoading(true);
@@ -297,42 +753,127 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
       .map((item) => item.trim())
       .filter(Boolean);
 
-  const parseTeacherImportFile = (text) => {
-    let raw = {};
-    const trimmed = String(text || "").trim();
+  const normalizeImportKey = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
 
-    if (!trimmed) {
-      throw new Error("Import file is empty.");
+  const readRowValue = (row, aliases) => {
+    const aliasSet = new Set(aliases.map((item) => normalizeImportKey(item)));
+    for (const [key, value] of Object.entries(row || {})) {
+      if (aliasSet.has(normalizeImportKey(key))) {
+        return value;
+      }
+    }
+    return "";
+  };
+
+  const parseFlexibleDate = (value) => {
+    const text = String(value || "").trim();
+    if (!text) return null;
+
+    const direct = new Date(text);
+    if (!Number.isNaN(direct.getTime())) return direct;
+
+    const match = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(text);
+    if (match) {
+      const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      if (!Number.isNaN(date.getTime())) return date;
     }
 
-    try {
-      raw = trimmed.startsWith("{") || trimmed.startsWith("[") ? JSON.parse(trimmed) : parseKeyValueText(trimmed);
-    } catch {
-      raw = parseKeyValueText(trimmed);
-    }
+    return null;
+  };
+
+  const slugifyForEmail = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ".")
+      .replace(/^\.+|\.+$/g, "") || "teacher";
+
+  const generateTeacherEmail = (fullName) => `${slugifyForEmail(fullName)}@schoolerp.local`;
+
+  const generateTeacherPassword = (fullName) => {
+    const token = String(fullName || "Teacher")
+      .replace(/[^a-z0-9]/gi, "")
+      .slice(0, 6)
+      .toLowerCase();
+    return `${token || "teacher"}@123`;
+  };
+
+  const parseAssignmentText = (value, branch = "Girls") => {
+    const normalizedBranch = branch === "Boys" ? "Boys" : "Girls";
+    const tokens = splitList(value);
+    return tokens
+      .flatMap((item) => {
+        const text = String(item || "").trim();
+        if (!text) return [];
+        const match = /^(.+?)[\s\-\/|]+([A-Za-z0-9]+)$/.exec(text);
+        if (match) {
+          return [
+            {
+              className: match[1].trim(),
+              branch: normalizedBranch,
+              section: match[2].trim(),
+              subject: "Class Teacher",
+            },
+          ];
+        }
+        return [
+          {
+            className: text,
+            branch: normalizedBranch,
+            section: "A",
+            subject: "Class Teacher",
+          },
+        ];
+      })
+      .filter((item) => item.className && item.section);
+  };
+
+  const normalizeTeacherImportRecord = (raw) => {
+    const fullName = String(
+      readRowValue(raw, ["Teacher Name", "Full Name", "Name", "teacherName", "fullName"]) || ""
+    ).trim();
+    const emailValue = String(readRowValue(raw, ["Email", "Email ID", "email", "emailId"]) || "").trim();
+    const passwordValue = String(readRowValue(raw, ["Password", "Login Password", "password"]) || "").trim();
+    const createdDateValue = parseFlexibleDate(readRowValue(raw, ["Created Date", "Created", "createdAt"]));
+    const joiningDateValue = parseFlexibleDate(readRowValue(raw, ["Joining Date", "joiningDate", "Join Date"]));
+    const statusValue = String(readRowValue(raw, ["Status", "status"]) || "Active").trim().toLowerCase();
+    const branchValue = String(readRowValue(raw, ["Branch", "branch", "Campus"]) || "Girls").trim() === "Boys" ? "Boys" : "Girls";
+    const assignmentsText =
+      readRowValue(raw, ["Assign Classes/Section", "Assigned Classes", "Class Section", "Classes & Sections", "Assignments"]) ||
+      "";
 
     const normalized = {
-      fullName: String(raw.fullName || raw.name || "").trim(),
-      email: String(raw.email || raw.emailId || "").trim(),
-      password: String(raw.password || "").trim(),
-      cnic: String(raw.cnic || "").trim(),
-      address: String(raw.address || "").trim(),
-      phoneNumber: String(raw.phoneNumber || raw.phone || raw.mobile || "").trim(),
-      designation: String(raw.designation || "").trim(),
-      qualification: String(raw.qualification || "").trim(),
-      expertise: String(raw.expertise || raw.favoriteSubjects || "").trim(),
-      salary: String(raw.salary ?? "").trim(),
+      fullName,
+      email: emailValue || generateTeacherEmail(fullName),
+      password: passwordValue || generateTeacherPassword(fullName),
+      cnic: String(readRowValue(raw, ["CNIC", "cnic"]) || "").trim(),
+      address: String(readRowValue(raw, ["Address", "address"]) || "").trim(),
+      phoneNumber: String(readRowValue(raw, ["Phone Number", "Phone", "Mobile", "phoneNumber"]) || "").trim(),
+      branch: branchValue,
+      designation: String(readRowValue(raw, ["Designation", "designation"]) || "").trim(),
+      qualification: String(readRowValue(raw, ["Qualification", "qualification"]) || "").trim(),
+      expertise: String(readRowValue(raw, ["Expertise", "Favorite Subjects", "Subjects", "expertise"]) || "").trim(),
+      salary: String(readRowValue(raw, ["Salary", "salary"]) ?? "").trim(),
+      isActive: statusValue !== "inactive" && statusValue !== "inactive account" && statusValue !== "disabled",
+      createdAt: createdDateValue?.toISOString() || "",
+      joiningDate: joiningDateValue?.toISOString() || "",
       allowPasswordReset:
-        raw.allowPasswordReset === undefined ? true : parseBooleanValue(raw.allowPasswordReset),
+        readRowValue(raw, ["Allow Password Reset", "allowPasswordReset"]) === ""
+          ? true
+          : parseBooleanValue(readRowValue(raw, ["Allow Password Reset", "allowPasswordReset"])),
       assignments: [],
     };
 
-    const assignmentsSource = Array.isArray(raw.assignments)
-      ? raw.assignments
-      : typeof raw.assignments === "string" && raw.assignments.trim()
+    const assignmentsSource = Array.isArray(readRowValue(raw, ["Assignments", "assignments"]))
+      ? readRowValue(raw, ["Assignments", "assignments"])
+      : typeof readRowValue(raw, ["Assignments", "assignments"]) === "string" &&
+          String(readRowValue(raw, ["Assignments", "assignments"])).trim()
         ? (() => {
             try {
-              const parsed = JSON.parse(raw.assignments);
+              const parsed = JSON.parse(String(readRowValue(raw, ["Assignments", "assignments"])));
               return Array.isArray(parsed) ? parsed : [parsed];
             } catch {
               return [];
@@ -344,17 +885,26 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
       normalized.assignments = assignmentsSource
         .map((item) => ({
           className: String(item.className || "").trim(),
-          branch: item.branch === "Boys" ? "Boys" : "Girls",
+          branch: item.branch === "Boys" ? "Boys" : item.branch === "Girls" ? "Girls" : branchValue,
           section: String(item.section || "").trim(),
           subject: String(item.subject || "").trim() || "Class Teacher",
         }))
         .filter((item) => item.className && item.section && item.subject);
-    } else if (raw.className && raw.branch && (raw.sections || raw.section || raw.subject || raw.sectionSubjects)) {
-      const sections = Array.isArray(raw.sections) ? raw.sections : splitList(raw.sections || raw.section);
+    } else if (assignmentsText) {
+      normalized.assignments = parseAssignmentText(assignmentsText, branchValue);
+    } else if (
+      readRowValue(raw, ["Class Name", "Class", "className"]) &&
+      (readRowValue(raw, ["Sections", "Section", "sections", "section"]) || readRowValue(raw, ["Subject", "Subjects", "subject", "subjects"]))
+    ) {
+      const className = String(readRowValue(raw, ["Class Name", "Class", "className"]) || "").trim();
+      const sections = Array.isArray(readRowValue(raw, ["Sections", "sections"]))
+        ? readRowValue(raw, ["Sections", "sections"])
+        : splitList(readRowValue(raw, ["Sections", "Section", "sections", "section"]));
       const subjectGroups = {};
 
-      if (raw.sectionSubjects && typeof raw.sectionSubjects === "object" && !Array.isArray(raw.sectionSubjects)) {
-        Object.entries(raw.sectionSubjects).forEach(([sectionKey, value]) => {
+      const sectionSubjectsValue = readRowValue(raw, ["Section Subjects", "sectionSubjects"]);
+      if (sectionSubjectsValue && typeof sectionSubjectsValue === "object" && !Array.isArray(sectionSubjectsValue)) {
+        Object.entries(sectionSubjectsValue).forEach(([sectionKey, value]) => {
           subjectGroups[String(sectionKey).trim()] = Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : splitList(value);
         });
       }
@@ -368,10 +918,10 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
 
       if (sections.length) {
         normalized.assignments = sections.flatMap((section) => {
-          const subjects = subjectGroups[section] || splitList(raw.subject || raw.subjects || "Class Teacher");
+          const subjects = subjectGroups[section] || splitList(readRowValue(raw, ["Subject", "Subjects", "subject", "subjects"]) || "Class Teacher");
           return subjects.map((subject) => ({
-            className: String(raw.className).trim(),
-            branch: raw.branch === "Boys" ? "Boys" : "Girls",
+            className,
+            branch: branchValue,
             section,
             subject: subject || "Class Teacher",
           }));
@@ -379,24 +929,61 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
       } else {
         normalized.assignments = [
           {
-            className: String(raw.className).trim(),
-            branch: raw.branch === "Boys" ? "Boys" : "Girls",
-            section: String(raw.section || "A").trim(),
-            subject: String(raw.subject || "Class Teacher").trim() || "Class Teacher",
+            className,
+            branch: branchValue,
+            section: String(readRowValue(raw, ["Section", "section"]) || "A").trim(),
+            subject: String(readRowValue(raw, ["Subject", "subject"]) || "Class Teacher").trim() || "Class Teacher",
           },
         ];
       }
     }
 
-    if (!normalized.fullName || !normalized.email || !normalized.password) {
-      throw new Error("Import file must include fullName, email, and password.");
-    }
-
-    if (!normalized.assignments.length) {
-      normalized.assignments = [];
+    if (!normalized.fullName) {
+      throw new Error("Each row must include Teacher Name.");
     }
 
     return normalized;
+  };
+
+  const parseTeacherImportFile = async (file) => {
+    if (!file) {
+      throw new Error("Please choose a file to import.");
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "";
+    let records = [];
+
+    if (extension === "xlsx" || extension === "xls" || extension === "csv") {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      if (!sheetName) throw new Error("Import file is empty.");
+      const sheet = workbook.Sheets[sheetName];
+      records = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    } else {
+      const text = await file.text();
+      const trimmed = String(text || "").trim();
+
+      if (!trimmed) {
+        throw new Error("Import file is empty.");
+      }
+
+      try {
+        const parsed = trimmed.startsWith("{") || trimmed.startsWith("[") ? JSON.parse(trimmed) : parseKeyValueText(trimmed);
+        records = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        records = [parseKeyValueText(trimmed)];
+      }
+    }
+
+    const normalizedRows = records
+      .map((row) => normalizeTeacherImportRecord(row))
+      .filter((row) => row.fullName && row.email && row.password);
+
+    if (!normalizedRows.length) {
+      throw new Error("Import file must include fullName, email, and password.");
+    }
+
+    return normalizedRows;
   };
 
   const importTeacherFromFile = async (file) => {
@@ -405,16 +992,21 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
     setError("");
     setSuccess("");
     try {
-      const text = await file.text();
-      const payload = parseTeacherImportFile(text);
-      await api.post("/teachers", payload);
-      setSuccess("Teacher imported successfully.");
+      const payloads = await parseTeacherImportFile(file);
+      for (const payload of payloads) {
+        await api.post("/teachers", payload);
+      }
+      setSuccess(
+        payloads.length === 1
+          ? "Teacher imported successfully."
+          : `${payloads.length} teachers imported successfully.`
+      );
       await loadData(1, search);
     } catch (err) {
       setError(err.message || err.response?.data?.message || "Failed to import teacher");
+      throw err;
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -433,6 +1025,17 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
     setCreateWizardKey((key) => key + 1);
     setCreateModalTeacherName("");
     setError("");
+  };
+
+  const openImportModal = () => {
+    setError("");
+    setSuccess("");
+    setShowImportModal(true);
+  };
+
+  const closeImportModal = () => {
+    if (importing) return;
+    setShowImportModal(false);
   };
 
   const onSaveAssignments = async (teacherId, wizardForm) => {
@@ -456,6 +1059,7 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
           : "Teacher marked as NO ASSIGN — all class assignments removed."
       );
       await loadData(page, search);
+      onAssignmentsUpdated?.();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save class assignments");
     } finally {
@@ -521,9 +1125,28 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
     setShowLoginDetailsModal(true);
   };
 
+  const openTeacherProfileModal = (teacher) => {
+    setTeacherProfile(teacher);
+    setShowTeacherProfileModal(true);
+  };
+
+  const saveTeacherProfile = async (teacherId, payload) => {
+    const { data } = await api.put(`/teachers/${teacherId}`, payload);
+    await loadData(page, search);
+    if (data?.data) {
+      setTeacherProfile((current) => (current?._id === teacherId || current?.id === teacherId ? { ...current, ...data.data } : current));
+    }
+    return data?.data || null;
+  };
+
   const closeLoginDetailsModal = () => {
     setShowLoginDetailsModal(false);
     setLoginDetailsTeacher(null);
+  };
+
+  const closeTeacherProfileModal = () => {
+    setShowTeacherProfileModal(false);
+    setTeacherProfile(null);
   };
 
   const openAssignModal = (teacher) => {
@@ -540,7 +1163,12 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
     : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm";
 
   const hasOpenModal =
-    Boolean(teacherModalMode) || showRemoveModal || showHistoryModal || showProfileModal || showLoginDetailsModal;
+    Boolean(teacherModalMode) ||
+    showImportModal ||
+    showRemoveModal ||
+    showHistoryModal ||
+    showTeacherProfileModal ||
+    showLoginDetailsModal;
 
   return (
     <section className="space-y-4">
@@ -574,17 +1202,15 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
           </button>
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={openImportModal}
             disabled={importing}
-            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium ${
-              dark
-                ? "border-[#7c4dff]/30 bg-[#7c4dff]/10 text-[#7c4dff] hover:bg-[#7c4dff]/15"
-                : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+          className={`inline-flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2 text-sm font-medium ${
+            dark
+              ? "border-[#7c4dff]/30 bg-[#7c4dff]/10 text-[#7c4dff] hover:bg-[#7c4dff]/15"
+              : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
             }`}
           >
-            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16" />
-            </svg>
+            <IconUploadArrow className="h-4 w-4" />
             {importing ? "Importing..." : "Import Teacher"}
           </button>
           <button
@@ -601,14 +1227,6 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
           </button>
         </div>
       </div>
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".txt,.json,text/plain,application/json"
-        className="hidden"
-        onChange={(event) => importTeacherFromFile(event.target.files?.[0])}
-      />
 
       {error && !hasOpenModal ? (
         <div
@@ -693,19 +1311,6 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowProfileModal(true)}
-              title="Teacher profiles"
-              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${
-                dark
-                  ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              <IconProfile />
-              Profiles
-            </button>
-            <button
-              type="button"
               onClick={() => setShowHistoryModal(true)}
               title="Assignment history"
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium ${
@@ -728,16 +1333,17 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
                   dark ? "border-white/[0.06] bg-[#1a1b26] text-[#9e9e9e]" : "border-slate-100 bg-slate-50/80 text-slate-500"
                 }`}
               >
-                <th className="px-5 py-3">Teacher Name</th>
-                <th className="px-5 py-3">Assigned Class</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Action</th>
+                <th className="px-5 py-2">Teacher Name</th>
+                <th className="px-5 py-2">Profile Details</th>
+                <th className="px-5 py-2">Classes & Sections</th>
+                <th className="px-5 py-2 pl-12">Status</th>
+                <th className="px-5 py-2 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={4} className={`px-5 py-10 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                  <td colSpan={4} className={`px-5 py-8 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                     Loading teachers...
                   </td>
                 </tr>
@@ -747,12 +1353,12 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
                     key={teacher._id}
                     className={dark ? "border-b border-white/[0.06] hover:bg-white/[0.03]" : "border-b border-slate-50 hover:bg-slate-50/50"}
                   >
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3 align-middle">
                       <div className="flex items-center gap-3">
                         <TeacherAvatar name={teacher.fullName} />
                         <div>
-                          <p className={`font-semibold ${dark ? "text-white" : "text-slate-800"}`}>{teacher.fullName}</p>
-                          <p className={`text-xs whitespace-nowrap ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                          <p className={`text-base font-semibold leading-tight ${dark ? "text-white" : "text-slate-800"}`}>{teacher.fullName}</p>
+                          <p className={`text-sm whitespace-nowrap ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                             Created{" "}
                             {new Date(teacher.createdAt).toLocaleDateString("en-US", {
                               month: "short",
@@ -763,23 +1369,78 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4">
-                      <ClassBadge assignedClasses={teacher.assignedClasses} dark={dark} />
+                    <td className="px-5 py-3 align-middle">
+                      <div className={`grid grid-cols-1 gap-1.5 text-xs ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                        <p>
+                          Joining Date:{" "}
+                          <span className="font-bold">
+                            {teacher.createdAt
+                              ? new Date(teacher.createdAt).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })
+                              : "Not set"}
+                          </span>
+                        </p>
+                        <p>
+                          Phone Number: <span className="font-bold">{teacher.profile?.phoneNumber || "Not set"}</span>
+                        </p>
+                        <p>
+                          Qualification: <span className="font-bold">{teacher.profile?.qualification || "Not set"}</span>
+                        </p>
+                        <p>
+                          Designation: <span className="font-bold">{teacher.profile?.designation || "Not set"}</span>
+                        </p>
+                      </div>
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-3 align-middle">
+                      <div className="space-y-1.5">
+                        <span
+                          className={`block rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            dark ? "bg-[#7c4dff]/15 text-[#7c4dff]" : "bg-indigo-50 text-indigo-700"
+                          }`}
+                        >
+                          {getTeacherAssignmentSummary(teacher.assignedClasses).classes} Assigned Classes
+                        </span>
+                        <span
+                          className={`block rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            dark ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-50 text-emerald-700"
+                          }`}
+                        >
+                          {getTeacherAssignmentSummary(teacher.assignedClasses).sections} Assigned Sections
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 align-middle pl-12">
                       <StatusPill active={teacher.isActive} dark={dark} />
                     </td>
-                    <td className="px-5 py-4 text-right">
-                      <div className="inline-flex items-center gap-1">
+                    <td className="px-5 py-3 align-middle text-right">
+                      <div className="inline-flex items-center gap-1 align-middle">
+                        <button
+                          type="button"
+                          onClick={() => openTeacherProfileModal(teacher)}
+                          title="View teacher profile"
+                          className={`inline-flex items-center rounded-lg border p-1.5 ${
+                            dark
+                              ? "border-white/[0.06] text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white"
+                              : "border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                          }`}
+                        >
+                          <IconEye />
+                        </button>
                         <button
                           type="button"
                           onClick={() => openLoginDetailsModal(teacher)}
                           title="View login details"
-                          className={`inline-flex items-center rounded-lg p-1.5 ${
-                            dark ? "text-[#9e9e9e] hover:bg-white/[0.04] hover:text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                            dark
+                              ? "border-[#7c4dff]/30 bg-[#7c4dff]/10 text-[#7c4dff] hover:bg-[#7c4dff]/15"
+                              : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
                           }`}
                         >
-                          <IconEye />
+                          <IconKey />
+                          Login Details
                         </button>
                         <button
                           type="button"
@@ -841,6 +1502,14 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
         ) : null}
       </FormModal>
 
+      <TeacherImportModal
+        open={showImportModal}
+        dark={dark}
+        onClose={closeImportModal}
+        onImport={importTeacherFromFile}
+        importing={importing}
+      />
+
       <FormModal
         open={showHistoryModal}
         title="Teacher Assignment History"
@@ -850,20 +1519,24 @@ export default function TeachersManagementPage({ dark = false, onToggleTheme, br
         dark={dark}
         onToggleTheme={onToggleTheme}
       >
-        {showHistoryModal ? <TeacherAssignmentHistoryModal dark={dark} /> : null}
+        {showHistoryModal ? (
+          <TeacherAssignmentHistoryModal
+            dark={dark}
+            onViewProfile={openTeacherProfileModal}
+            onViewLoginDetails={openLoginDetailsModal}
+            onEditTeacher={openAssignModal}
+          />
+        ) : null}
       </FormModal>
 
-      <FormModal
-        open={showProfileModal}
-        title="View Teacher Profiles"
-        subtitle="Teacher profile filters and details"
-        onClose={() => setShowProfileModal(false)}
-        extraWide
-        dark={dark}
-        onToggleTheme={onToggleTheme}
-      >
-        {showProfileModal ? <TeacherProfilesModal dark={dark} /> : null}
-      </FormModal>
+      {showTeacherProfileModal ? (
+        <TeacherProfileModal
+          teacher={teacherProfile}
+          dark={dark}
+          onClose={closeTeacherProfileModal}
+          onSave={saveTeacherProfile}
+        />
+      ) : null}
 
       <FormModal
         open={showLoginDetailsModal}

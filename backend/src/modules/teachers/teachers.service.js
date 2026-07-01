@@ -90,6 +90,15 @@ export const createTeacher = async (payload, actorId) => {
   }
 
   const assignments = normalizeAssignments(payload);
+  const isActive = payload.isActive !== false;
+  const importedCreatedAt = payload.createdAt ? new Date(payload.createdAt) : null;
+  const importedJoiningAt = payload.joiningDate ? new Date(payload.joiningDate) : null;
+  const importedTimestamp =
+    importedCreatedAt && !Number.isNaN(importedCreatedAt.getTime())
+      ? importedCreatedAt
+      : importedJoiningAt && !Number.isNaN(importedJoiningAt.getTime())
+        ? importedJoiningAt
+        : null;
 
   const teacher = await registerUser({
     fullName,
@@ -97,7 +106,20 @@ export const createTeacher = async (payload, actorId) => {
     password,
     role: "TEACHER",
     actorId,
+    isActive,
   });
+
+  if (importedTimestamp) {
+    await User.updateOne(
+      { _id: teacher.id },
+      {
+        $set: {
+          createdAt: importedTimestamp,
+          updatedAt: importedTimestamp,
+        },
+      }
+    );
+  }
 
   if (assignments.length) {
     await saveTeacherAssignments(teacher.id, assignments, actorId);
@@ -449,7 +471,7 @@ export const getTeacherAssignmentHistory = async ({ from, to, className, section
 
   const [rows, total] = await Promise.all([
     TeacherClass.find(filter)
-      .populate({ path: "teacherId", select: "fullName email isActive isDeleted" })
+      .populate({ path: "teacherId", select: "fullName email isActive isDeleted createdAt" })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -457,20 +479,57 @@ export const getTeacherAssignmentHistory = async ({ from, to, className, section
     TeacherClass.countDocuments(filter),
   ]);
 
+  const teacherIds = rows.filter((row) => row.teacherId).map((row) => row.teacherId._id);
+  const [profileMap, currentAssignments] = await Promise.all([
+    getTeacherProfilesMap(teacherIds),
+    TeacherClass.find({ teacherId: { $in: teacherIds }, isDeleted: false })
+      .select("teacherId className branch section subject")
+      .lean(),
+  ]);
+
+  const currentAssignmentMap = new Map();
+  currentAssignments.forEach((row) => {
+    const key = row.teacherId.toString();
+    if (!currentAssignmentMap.has(key)) currentAssignmentMap.set(key, []);
+    currentAssignmentMap.get(key).push(row);
+  });
+
   const items = rows
     .filter((row) => row.teacherId)
-    .map((row) => ({
-      id: row._id.toString(),
-      teacherId: row.teacherId._id.toString(),
-      teacherName: row.teacherId.fullName,
-      email: row.teacherId.email,
-      className: row.className,
-      section: row.section || "A",
-      subject: row.subject,
-      assignedAt: row.createdAt,
-      assignmentStatus: row.isDeleted ? "Removed" : "Active",
-      teacherStatus: row.teacherId.isDeleted ? "Removed" : row.teacherId.isActive ? "Active" : "Inactive",
-    }));
+    .map((row) => {
+      const teacherId = row.teacherId._id.toString();
+      const profile = profileMap.get(teacherId) || null;
+
+      return {
+        id: row._id.toString(),
+        teacherId,
+        teacherName: row.teacherId.fullName,
+        email: row.teacherId.email,
+        isActive: row.teacherId.isActive,
+        teacherCreatedAt: row.teacherId.createdAt,
+        className: row.className,
+        branch: row.branch === "Boys" ? "Boys" : "Girls",
+        section: row.section || "A",
+        subject: row.subject,
+        assignedClasses: currentAssignmentMap.get(teacherId) || [],
+        assignedAt: row.createdAt,
+        assignmentStatus: row.isDeleted ? "Removed" : "Active",
+        teacherStatus: row.teacherId.isDeleted ? "Removed" : row.teacherId.isActive ? "Active" : "Inactive",
+        profile: profile
+          ? {
+              cnic: profile.cnic || "",
+              address: profile.address || "",
+              phoneNumber: profile.phoneNumber || "",
+              qualification: profile.qualification || "",
+              designation: profile.designation || "",
+              expertise: profile.expertise || "",
+              salary: profile.salary,
+              allowPasswordReset: profile.allowPasswordReset,
+              loginPassword: profile.loginPassword || "",
+            }
+          : null,
+      };
+    });
 
   return {
     items,

@@ -12,7 +12,6 @@ import {
   listAcademicRecords,
   listAttendance,
   listAttendanceSummary,
-  listMyAttendanceSummary,
   listMyClasses,
   listReports,
   listStudentsForClass,
@@ -59,11 +58,6 @@ export const getAttendance = asyncHandler(async (req, res) => {
 
 export const getAttendanceSummary = asyncHandler(async (req, res) => {
   const data = await listAttendanceSummary(req.user._id, req.query);
-  res.status(200).json({ success: true, data });
-});
-
-export const getMyAttendanceSummary = asyncHandler(async (req, res) => {
-  const data = await listMyAttendanceSummary(req.user._id, req.query);
   res.status(200).json({ success: true, data });
 });
 

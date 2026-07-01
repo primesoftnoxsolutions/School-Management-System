@@ -26,10 +26,9 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
     "Reports",
   ];
 
-  const navItems = role === "ACCOUNTANT" ? ["Dashboard", "Purchase Management", "Fees Management", "Reports"] : adminNavItems;
-  const financeFeeSubpages = ["Fine Management", "Refund Management"];
+  const navItems = role === "ACCOUNTANT" ? ["Finance Management"] : adminNavItems;
   const isTeacherSubpageActive = isTeacherSubpage(selected);
-  const isFeeSubpageActive = isFeeSubpage(selected) || selected === "Refund Management";
+  const isFeeSubpageActive = isFeeSubpage(selected);
   const isStudentSubpageActive = isStudentSubpage(selected);
 
   useEffect(() => {
@@ -175,18 +174,14 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
                   >
                     {PageIcon ? <PageIcon className="h-5 w-5" /> : null}
                   </span>
-                  <span className="leading-tight">
-                    <span className="block">Assigned Classes</span>
-                    <span className="block">&amp; Sections</span>
-                  </span>
+                  <span className="truncate">Assigned Classes</span>
                 </button>
               );
             }
 
-            if (item === "Fee Management" || item === "Fees Management") {
-              const FeePageIcon = navIconMap[item] || navIconMap["Fee Management"] || Icon;
+            if (item === "Fee Management") {
+              const FeePageIcon = navIconMap["Fee Management"] || Icon;
               const feeParentActive = active || isFeeSubpageActive;
-              const feeSubpages = role === "ACCOUNTANT" ? financeFeeSubpages : FEE_SUBPAGES;
 
               return (
                 <div key={item} className="rounded-2xl border border-transparent transition">
@@ -214,7 +209,7 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
                         >
                           {FeePageIcon ? <FeePageIcon className="h-5 w-5" /> : null}
                         </span>
-                        <span>{item}</span>
+                        <span>Fee Management</span>
                       </button>
 
                       <button
@@ -239,7 +234,7 @@ export default function Sidebar({ selected, onSelect, onLogout, role, dark = tru
                   >
                     <div className="min-h-0 overflow-hidden">
                       <TeacherNavSubmenu
-                        items={feeSubpages}
+                        items={FEE_SUBPAGES}
                         selected={selected}
                         onSelect={onSelect}
                         dark={dark}

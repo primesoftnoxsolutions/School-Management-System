@@ -118,35 +118,6 @@ export function IconReports({ className = "h-4 w-4" }) {
   );
 }
 
-export function IconPurchase({ className = "h-4 w-4" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-      <path d="M3.27 6.96 12 12.01l8.73-5.05" />
-      <path d="M12 22.08V12" />
-    </svg>
-  );
-}
-
-export function IconEye({ className = "h-4 w-4" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-export function IconPrint({ className = "h-4 w-4" }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <path d="M6 9V2h12v7" />
-      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-      <path d="M6 14h12v8H6z" />
-    </svg>
-  );
-}
-
 export function IconClock({ className = "h-4 w-4" }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -275,13 +246,10 @@ export const navIconMap = {
   Students: IconStudents,
   "Assigned Classes & Sections": IconClasses,
   "Fee Management": IconFee,
-  "Fees Management": IconFee,
   "Fee Refund": IconRefund,
-  "Refund Management": IconRefund,
   "Fine Management": IconFine,
   "Students Portfolios": IconPortfolio,
   "Finance Management": IconFee,
-  "Purchase Management": IconPurchase,
   "School Leaving": IconLeaving,
   "Time & Attendance": IconAttendance,
   Payroll: IconPayroll,

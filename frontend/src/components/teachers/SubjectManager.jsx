@@ -161,6 +161,16 @@ export default function SubjectManager({
                   >
                     Add
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectedChange([])}
+                    disabled={!selected.length}
+                    className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+                      dark ? "text-[#9e9e9e] hover:bg-white/[0.04]" : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    Deselect All
+                  </button>
                 </div>
               </div>
 
@@ -242,17 +252,6 @@ export default function SubjectManager({
                           >
                             Remove
                           </button>
-                          {isSelected ? (
-                            <button
-                              type="button"
-                              onClick={() => toggleSelected(subject)}
-                              className={`rounded px-2 py-1 text-xs font-medium ${
-                                dark ? "text-[#ff9800] hover:bg-white/[0.04]" : "text-amber-600 hover:bg-amber-50"
-                              }`}
-                            >
-                              Deselect
-                            </button>
-                          ) : null}
                         </div>
                       </div>
                     );

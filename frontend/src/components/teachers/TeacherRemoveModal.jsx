@@ -10,17 +10,27 @@ function subjectSortIndex(subject) {
 
 function formatAssignment(assignedClasses = []) {
   if (!assignedClasses.length) return "Not assigned";
-  const className = assignedClasses[0].className || "";
-  const section = assignedClasses[0].section || "A";
-  const subjects = [
-    ...new Set(
-      assignedClasses
-        .filter((row) => row.className === className && (row.section || "A") === section)
-        .map((row) => row.subject)
-        .filter(Boolean)
-    ),
-  ].sort((a, b) => subjectSortIndex(a) - subjectSortIndex(b));
-  return `${className} ${section}, ${subjects.join(", ")}`;
+  const groups = new Map();
+
+  assignedClasses.forEach((row) => {
+    const className = row.className || "";
+    const section = row.section || "A";
+    const key = `${className}|${section}`;
+    if (!groups.has(key)) {
+      groups.set(key, { className, section, subjects: [] });
+    }
+    const group = groups.get(key);
+    if (row.subject && !group.subjects.includes(row.subject)) {
+      group.subjects.push(row.subject);
+    }
+  });
+
+  return [...groups.values()]
+    .map((group) => {
+      const subjects = group.subjects.sort((a, b) => subjectSortIndex(a) - subjectSortIndex(b));
+      return `${group.className} ${group.section}, ${subjects.join(", ") || "Class Teacher"}`;
+    })
+    .join(" | ");
 }
 
 export default function TeacherRemoveModal({ dark = false, onRemoved }) {

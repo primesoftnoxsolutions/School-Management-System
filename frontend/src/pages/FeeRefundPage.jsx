@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import api from "../services/api/client";
 import FormModal from "../components/ui/FormModal";
 import PageHeader from "../components/ui/PageHeader";
-import { CLASS_OPTIONS, SECTION_OPTIONS } from "../constants/classes";
 import { PAYMENT_METHODS, REFUND_STATUS, REFUND_TYPES } from "../constants/finance";
 
 const emptyForm = {
-  className: "",
-  section: "",
   studentId: "",
   refundType: "FEES",
   amount: "",
@@ -24,11 +21,6 @@ export default function FeeRefundPage({ role }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const filteredStudents = students.filter((s) => {
-    const matchesClass = form.className ? s.className === form.className : true;
-    const matchesSection = form.section ? (s.section || "A") === form.section : true;
-    return matchesClass && matchesSection;
-  });
 
   const load = async () => {
     setLoading(true);
@@ -60,8 +52,7 @@ export default function FeeRefundPage({ role }) {
     setSaving(true);
     setError("");
     try {
-      const { className: _className, section: _section, ...refundPayload } = form;
-      await api.post("/fee-refunds", refundPayload);
+      await api.post("/fee-refunds", form);
       setForm(emptyForm);
       setShowModal(false);
       await load();
@@ -145,20 +136,7 @@ export default function FeeRefundPage({ role }) {
       </div>
 
       <FormModal open={showModal} title="Create Refund" onClose={() => setShowModal(false)} wide>
-        <form onSubmit={onSubmit} className="space-y-5">
-          <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
-            <p className="text-sm font-bold text-slate-900">Refund Details</p>
-            <p className="mt-1 text-xs text-slate-500">Select class and section to narrow the student list.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <select className="ref-input" value={form.className} onChange={(e) => setForm({ ...form, className: e.target.value, studentId: "" })}>
-            <option value="">Select class</option>
-            {CLASS_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select className="ref-input" value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value, studentId: "" })}>
-            <option value="">Select section</option>
-            {SECTION_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <select
             className="ref-input md:col-span-2"
             value={form.studentId}
@@ -166,8 +144,8 @@ export default function FeeRefundPage({ role }) {
             required
           >
             <option value="">Select student *</option>
-            {filteredStudents.map((s) => (
-              <option key={s._id} value={s._id}>{s.firstName} {s.lastName} - {s.className} {s.section || "A"}</option>
+            {students.map((s) => (
+              <option key={s._id} value={s._id}>{s.firstName} {s.lastName} — {s.className}</option>
             ))}
           </select>
           <select
@@ -211,8 +189,7 @@ export default function FeeRefundPage({ role }) {
             value={form.remarks}
             onChange={(e) => setForm({ ...form, remarks: e.target.value })}
           />
-          </div>
-          <button type="submit" className="ref-btn-primary w-full" disabled={saving}>
+          <button type="submit" className="ref-btn-primary md:col-span-2" disabled={saving}>
             {saving ? "Saving..." : "Submit Refund Request"}
           </button>
         </form>

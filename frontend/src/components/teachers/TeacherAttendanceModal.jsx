@@ -56,6 +56,41 @@ function getAssignmentColumns(assignedClasses = []) {
   };
 }
 
+function getAssignmentColumnsV2(assignedClasses = []) {
+  if (!assignedClasses.length) {
+    return { className: "â€”", section: "â€”", subjects: "â€”" };
+  }
+
+  const classNames = [...new Set(assignedClasses.map((row) => row.className).filter(Boolean))];
+  const sections = [...new Set(assignedClasses.map((row) => row.section || "A").filter(Boolean))];
+  const subjectGroups = new Map();
+
+  assignedClasses.forEach((row) => {
+    const key = `${row.className || ""}|${row.section || "A"}`;
+    if (!subjectGroups.has(key)) {
+      subjectGroups.set(key, []);
+    }
+    if (row.subject && !subjectGroups.get(key).includes(row.subject)) {
+      subjectGroups.get(key).push(row.subject);
+    }
+  });
+
+  const subjects = [...subjectGroups.entries()]
+    .map(([key, items]) => {
+      const [className, section] = key.split("|");
+      const label = `${className || "â€”"} ${section || "A"}`;
+      const sortedSubjects = items.sort((a, b) => subjectSortIndex(a) - subjectSortIndex(b));
+      return `${label}: ${sortedSubjects.join(", ") || "Class Teacher"}`;
+    })
+    .join(" | ");
+
+  return {
+    className: classNames.join(", ") || "â€”",
+    section: sections.join(", ") || "â€”",
+    subjects: subjects || "â€”",
+  };
+}
+
 function AttendanceActionButton({ label, tone, active, disabled, onClick, dark }) {
   const tones = {
     present: active
@@ -131,7 +166,7 @@ export default function TeacherAttendanceModal({
           fullName: teacher.fullName,
           isActive: teacher.isActive !== false,
           status: statusMap.get(String(teacher._id)) || "UNMARKED",
-          ...getAssignmentColumns(teacher.assignedClasses),
+          ...getAssignmentColumnsV2(teacher.assignedClasses),
         }))
       );
     } catch (err) {

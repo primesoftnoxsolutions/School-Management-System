@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { login } from "../store/authSlice";
 import { useAppTheme } from "../hooks/useAppTheme";
@@ -171,6 +171,10 @@ export default function LoginPage({ exiting = false }) {
   const [showPassword, setShowPassword] = useState(false);
   const [roleAnimKey, setRoleAnimKey] = useState(0);
   const [themeSpinning, setThemeSpinning] = useState(false);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [roleMenuMounted, setRoleMenuMounted] = useState(false);
+  const roleMenuRef = useRef(null);
+  const roleMenuCloseTimerRef = useRef(null);
   const { isDark: isDarkTheme, toggleTheme: toggleLoginTheme } = useAppTheme();
 
   const accent = isDarkTheme ? "#7c4dff" : "#0b63d8";
@@ -191,7 +195,48 @@ export default function LoginPage({ exiting = false }) {
     setRole(nextRole);
     setForm(getRoleDefaults(nextRole));
     setShowPassword(false);
+    setRoleMenuOpen(false);
   };
+
+  const openRoleMenu = () => {
+    if (roleMenuCloseTimerRef.current) {
+      window.clearTimeout(roleMenuCloseTimerRef.current);
+      roleMenuCloseTimerRef.current = null;
+    }
+    setRoleMenuMounted(true);
+    requestAnimationFrame(() => setRoleMenuOpen(true));
+  };
+
+  const closeRoleMenu = () => {
+    setRoleMenuOpen(false);
+    if (roleMenuCloseTimerRef.current) {
+      window.clearTimeout(roleMenuCloseTimerRef.current);
+    }
+    roleMenuCloseTimerRef.current = window.setTimeout(() => {
+      setRoleMenuMounted(false);
+      roleMenuCloseTimerRef.current = null;
+    }, 180);
+  };
+
+  const toggleRoleMenu = () => {
+    if (roleMenuOpen) closeRoleMenu();
+    else openRoleMenu();
+  };
+
+  useEffect(() => {
+    const onDocClick = (event) => {
+      if (!roleMenuRef.current?.contains(event.target)) {
+        closeRoleMenu();
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      if (roleMenuCloseTimerRef.current) {
+        window.clearTimeout(roleMenuCloseTimerRef.current);
+      }
+    };
+  }, []);
 
   const onSubmit = async (event) => {
     event.preventDefault();
@@ -397,33 +442,83 @@ export default function LoginPage({ exiting = false }) {
 
             <div className="mb-5">
               <p className={`mb-2 text-base font-semibold ${isDarkTheme ? "text-slate-200" : "text-slate-800"}`}>Login as:</p>
-              <div
-                key={`role-switch-${roleAnimKey}`}
-                className={`login-role-enter grid grid-cols-2 overflow-hidden rounded-2xl border sm:grid-cols-4 ${
-                  isDarkTheme ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
-                }`}
-              >
-                {ROLE_OPTIONS.map((option) => {
-                  const active = role === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => onRoleChange(option.id)}
-                      className={`flex items-center justify-center gap-3 px-4 py-4 text-base font-semibold transition ${
-                        active
-                          ? "text-white shadow-[0_10px_20px_rgba(124,77,255,0.2)]"
-                          : isDarkTheme
-                            ? "text-[#9e9e9e] hover:bg-white/5"
-                            : "bg-white text-slate-800 hover:bg-slate-50"
-                      }`}
-                      style={active ? { backgroundColor: accent } : isDarkTheme ? { backgroundColor: panelBg } : undefined}
+              <div ref={roleMenuRef} className="relative w-full">
+                <button
+                  type="button"
+                  onClick={toggleRoleMenu}
+                  className={`login-role-enter flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-4 text-left text-base font-semibold transition ${
+                    isDarkTheme ? "border-white/[0.06] bg-[#161722] text-white" : "border-slate-200 bg-white text-slate-800"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
+                      style={{ backgroundColor: accent }}
                     >
-                      <RoleIcon role={option.id} />
-                      {option.label}
-                    </button>
-                  );
-                })}
+                      <RoleIcon role={role} />
+                    </span>
+                    <span className="min-w-0 truncate">{ROLE_OPTIONS.find((item) => item.id === role)?.label || "Select role"}</span>
+                  </span>
+                  <svg
+                    viewBox="0 0 20 20"
+                    className={`h-5 w-5 shrink-0 transition-transform ${roleMenuOpen ? "rotate-180" : ""}`}
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M5 7.5 10 12.5 15 7.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+
+                {roleMenuMounted ? (
+                  <div
+                    className={`absolute left-0 top-full z-30 mt-2 w-full overflow-hidden rounded-2xl border shadow-xl transition-all duration-200 ease-out ${
+                      isDarkTheme ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
+                    }`}
+                    style={
+                      roleMenuOpen
+                        ? { opacity: 1, transform: "translateY(0)", maxHeight: "320px" }
+                        : { opacity: 0, transform: "translateY(-8px)", maxHeight: "0px", pointerEvents: "none" }
+                    }
+                  >
+                    {ROLE_OPTIONS.map((option) => {
+                      const active = role === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => onRoleChange(option.id)}
+                          className={`flex w-full items-center gap-3 px-4 py-3 text-left text-base font-semibold transition ${
+                            active
+                              ? "text-white"
+                              : isDarkTheme
+                                ? "text-[#9e9e9e] hover:bg-white/5"
+                                : "text-slate-700 hover:bg-slate-50"
+                          }`}
+                          style={active ? { backgroundColor: accent } : undefined}
+                        >
+                          <span
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                              active
+                                ? "bg-white/15 text-white"
+                                : isDarkTheme
+                                  ? "bg-white/[0.06] text-[#9e9e9e]"
+                                  : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            <RoleIcon role={option.id} />
+                          </span>
+                          <span>{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             </div>
 

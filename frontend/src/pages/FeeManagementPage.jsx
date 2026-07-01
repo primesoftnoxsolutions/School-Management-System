@@ -4,12 +4,10 @@ import FormModal from "../components/ui/FormModal";
 import FeeReceiptSlip from "../components/finance/FeeReceiptSlip";
 import PageHeader from "../components/ui/PageHeader";
 import TablePagination from "../components/ui/TablePagination";
-import { CLASS_OPTIONS, SECTION_OPTIONS, getClassSectionOptions } from "../constants/classes";
+import { getClassSectionOptions } from "../constants/classes";
 import { FEE_TYPES, PAYMENT_METHODS, labelFeeType } from "../constants/finance";
 
 const emptyPay = {
-  className: "",
-  section: "",
   studentId: "",
   assignmentId: "",
   feeType: "TUITION",
@@ -52,11 +50,6 @@ export default function FeeManagementPage({ role, title = "Fee Management", subt
   const classStudents = classFilter
     ? students.filter((s) => s.className === className && (s.section || "A") === section)
     : [];
-  const modalStudents = students.filter((s) => {
-    const matchesClass = payForm.className ? s.className === payForm.className : true;
-    const matchesSection = payForm.section ? (s.section || "A") === payForm.section : true;
-    return matchesClass && matchesSection;
-  });
 
   const studentAssignments = studentPendingFees.filter(
     (a) => a.studentId?._id === payForm.studentId && ["PENDING", "PARTIAL"].includes(a.status)
@@ -149,8 +142,7 @@ export default function FeeManagementPage({ role, title = "Fee Management", subt
     setSaving(true);
     setError("");
     try {
-      const { className: _className, section: _section, ...paymentPayload } = payForm;
-      const { data } = await api.post("/fees/payments", paymentPayload);
+      const { data } = await api.post("/fees/payments", payForm);
       setSlip(data.data.slip);
       setPayForm({ ...emptyPay, paidAt: new Date().toISOString().slice(0, 10) });
       setShowReceiveModal(false);
@@ -173,14 +165,7 @@ export default function FeeManagementPage({ role, title = "Fee Management", subt
   };
 
   const openReceiveForStudent = (studentId) => {
-    const selectedStudent = students.find((s) => s._id === studentId);
-    setPayForm({
-      ...emptyPay,
-      className: selectedStudent?.className || "",
-      section: selectedStudent?.section || "",
-      studentId,
-      paidAt: new Date().toISOString().slice(0, 10),
-    });
+    setPayForm({ ...emptyPay, studentId, paidAt: new Date().toISOString().slice(0, 10) });
     loadStudentPendingFees(studentId);
     setShowReceiveModal(true);
   };
@@ -318,32 +303,7 @@ export default function FeeManagementPage({ role, title = "Fee Management", subt
       </div>
 
       <FormModal open={showReceiveModal} title="Receive Fee" onClose={() => setShowReceiveModal(false)} wide>
-        <form onSubmit={onReceive} className="space-y-5">
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-            <p className="text-sm font-bold text-slate-900">Fee Receiving Details</p>
-            <p className="mt-1 text-xs text-slate-500">Select class and section first to quickly find the student.</p>
-          </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <select
-            className="ref-input"
-            value={payForm.className}
-            onChange={(e) => setPayForm({ ...payForm, className: e.target.value, studentId: "", assignmentId: "" })}
-          >
-            <option value="">Select class</option>
-            {CLASS_OPTIONS.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            className="ref-input"
-            value={payForm.section}
-            onChange={(e) => setPayForm({ ...payForm, section: e.target.value, studentId: "", assignmentId: "" })}
-          >
-            <option value="">Select section</option>
-            {SECTION_OPTIONS.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
+        <form onSubmit={onReceive} className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <select
             className="ref-input md:col-span-2"
             value={payForm.studentId}
@@ -355,7 +315,7 @@ export default function FeeManagementPage({ role, title = "Fee Management", subt
             required
           >
             <option value="">Select student *</option>
-            {(classFilter ? classStudents : modalStudents).map((s) => (
+            {(classFilter ? classStudents : students).map((s) => (
               <option key={s._id} value={s._id}>
                 {s.firstName} {s.lastName} — {s.className} {s.section || "A"}
               </option>
@@ -399,8 +359,7 @@ export default function FeeManagementPage({ role, title = "Fee Management", subt
           </select>
           <input type="date" className="ref-input" value={payForm.paidAt} onChange={(e) => setPayForm({ ...payForm, paidAt: e.target.value })} />
           <input className="ref-input md:col-span-2" placeholder="Remarks" value={payForm.remarks} onChange={(e) => setPayForm({ ...payForm, remarks: e.target.value })} />
-          </div>
-          <button type="submit" className="ref-btn-primary w-full" disabled={saving}>
+          <button type="submit" className="ref-btn-primary md:col-span-2" disabled={saving}>
             {saving ? "Processing..." : "Receive Fee & Generate Slip"}
           </button>
         </form>

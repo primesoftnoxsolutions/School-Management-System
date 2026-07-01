@@ -162,6 +162,10 @@ function getTeacherField(teacher, primaryKey, secondaryKey = "") {
   return "";
 }
 
+function getTeacherLoginPassword(teacher) {
+  return teacher?.profile?.loginPassword || "";
+}
+
 function IconEye() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -171,8 +175,19 @@ function IconEye() {
   );
 }
 
+function IconProfile() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19a6 6 0 10-6 0" />
+      <circle cx="12" cy="9" r="3" />
+    </svg>
+  );
+}
+
 function TeacherProfileOverlay({ teacher, dark, loading, onClose }) {
   if (!teacher && !loading) return null;
+  const groupedAssignments = groupAssignments(teacher?.assignedClasses || []);
+  const loginPassword = getTeacherLoginPassword(teacher);
 
   return createPortal(
     <div
@@ -228,6 +243,60 @@ function TeacherProfileOverlay({ teacher, dark, loading, onClose }) {
                 <Field label="Expertise" value={getTeacherField(teacher, "expertise", "expertise")} dark={dark} />
                 <Field label="Salary" value={getTeacherField(teacher, "salary", "salary") ? `Rs. ${getTeacherField(teacher, "salary", "salary")}` : ""} dark={dark} />
                 <Field label="Address" value={getTeacherField(teacher, "address", "address")} dark={dark} className="sm:col-span-2" />
+              </div>
+
+              <div className={`rounded-2xl border p-4 ${dark ? "border-white/[0.06] bg-[#1a1b26]/70" : "border-slate-200 bg-slate-50/70"}`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                      Login Details
+                    </p>
+                    <p className={`mt-1 text-xs ${dark ? "text-[#7f8197]" : "text-slate-500"}`}>
+                      Credentials are available from the stored teacher profile.
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      teacher?.isActive === false
+                        ? dark
+                          ? "bg-white/[0.06] text-[#9e9e9e]"
+                          : "bg-slate-100 text-slate-600"
+                        : dark
+                          ? "bg-[#4caf50]/15 text-[#4caf50]"
+                          : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${teacher?.isActive === false ? "bg-slate-400" : "bg-emerald-500"}`} />
+                    {teacher?.isActive === false ? "Inactive" : "Active"}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Email" value={teacher?.email || "â€”"} dark={dark} mono />
+                  <Field label="Password" value={loginPassword ? "Stored in profile data" : "Not recorded"} dark={dark} mono />
+                </div>
+              </div>
+
+              <div className={`rounded-2xl border p-4 ${dark ? "border-white/[0.06] bg-[#1a1b26]/70" : "border-slate-200 bg-slate-50/70"}`}>
+                <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                  Assigned Classes
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {groupedAssignments.length ? (
+                    groupedAssignments.map((group) => (
+                      <span
+                        key={`${group.className}|${group.section}`}
+                        className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold ${
+                          dark ? "bg-[#7c4dff]/15 text-[#7c4dff]" : "bg-indigo-50 text-indigo-700"
+                        }`}
+                      >
+                        {group.className} - {group.section}
+                        {group.subjects.length ? `, ${group.subjects.join(", ")}` : ""}
+                      </span>
+                    ))
+                  ) : (
+                    <span className={`text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>No assigned classes recorded.</span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -313,17 +382,10 @@ export default function TeacherProfilesModal({ dark = false }) {
     }
   };
 
-  const handleViewProfile = async (teacher) => {
+  const handleViewProfile = (teacher) => {
     setProfileLoading(true);
     setProfileTeacher(teacher);
-    try {
-      const { data } = await api.get(`/teachers/${teacher._id}`);
-      setProfileTeacher(data.data || teacher);
-    } catch {
-      setProfileTeacher(teacher);
-    } finally {
-      setProfileLoading(false);
-    }
+    setProfileLoading(false);
   };
 
   const thClass = dark
@@ -341,7 +403,10 @@ export default function TeacherProfilesModal({ dark = false }) {
             dark ? "border-white/[0.06] bg-[#1a1b26]/60" : "border-slate-200 bg-slate-50/70"
           }`}
         >
-          <p className={`mb-3 text-sm font-semibold ${dark ? "text-white" : "text-slate-800"}`}>Filter teacher profiles</p>
+          <p className={`mb-3 flex items-center gap-2 text-sm font-semibold ${dark ? "text-white" : "text-slate-800"}`}>
+            <IconProfile />
+            Filter teacher profiles
+          </p>
           <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
             <ModernDatePicker
               label="From date"
@@ -435,16 +500,13 @@ export default function TeacherProfilesModal({ dark = false }) {
                   <tr>
                     <th className={thClass}>S. No.</th>
                     <th className={thClass}>Teacher Name</th>
-                    <th className={thClass}>Phone Number</th>
-                    <th className={thClass}>Qualification</th>
-                    <th className={thClass}>Designation</th>
                     <th className={thClass}>View</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className={`px-4 py-8 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                      <td colSpan={3} className={`px-4 py-8 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                         Loading teacher profiles...
                       </td>
                     </tr>
@@ -456,16 +518,15 @@ export default function TeacherProfilesModal({ dark = false }) {
                           <div className="flex items-center gap-3">
                             <TeacherAvatar name={teacher.fullName} dark={dark} />
                             <div>
-                              <p>{teacher.fullName}</p>
-                              <p className={`text-xs font-normal ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                              <p className={`text-base font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
+                                {teacher.fullName}
+                              </p>
+                              <p className={`text-sm font-medium ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                                 {formatCreatedDate(teacher.createdAt) ? `Created ${formatCreatedDate(teacher.createdAt)}` : ""}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className={`${tdClass} font-mono text-xs`}>{getTeacherField(teacher, "phoneNumber") || "—"}</td>
-                        <td className={tdClass}>{getTeacherField(teacher, "qualification") || "—"}</td>
-                        <td className={tdClass}>{getTeacherField(teacher, "designation") || "—"}</td>
                         <td className={tdClass}>
                           <button
                             type="button"
@@ -484,7 +545,7 @@ export default function TeacherProfilesModal({ dark = false }) {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className={`px-4 py-8 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
+                      <td colSpan={3} className={`px-4 py-8 text-center ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
                         No teacher profiles found for the selected filters.
                       </td>
                     </tr>
@@ -508,3 +569,4 @@ export default function TeacherProfilesModal({ dark = false }) {
     </>
   );
 }
+

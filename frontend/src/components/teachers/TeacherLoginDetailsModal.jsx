@@ -3,34 +3,19 @@ import { useState } from "react";
 function StatusPill({ active, dark = false }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
         active
           ? dark
             ? "bg-emerald-500/15 text-emerald-300"
             : "bg-emerald-50 text-emerald-700"
           : dark
-            ? "bg-white/[0.06] text-[#9e9e9e]"
+            ? "bg-white/[0.06] text-slate-300"
             : "bg-slate-100 text-slate-600"
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : dark ? "bg-[#9e9e9e]" : "bg-slate-400"}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : dark ? "bg-slate-400" : "bg-slate-400"}`} />
       {active ? "Active Account" : "Inactive Account"}
     </span>
-  );
-}
-
-function DetailCard({ label, value, dark = false, mono = false }) {
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-3 ${
-        dark ? "border-white/[0.06] bg-[#1a1b26]/70" : "border-slate-200 bg-slate-50/70"
-      }`}
-    >
-      <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-        {label}
-      </p>
-      <p className={`mt-2 text-sm font-medium ${mono ? "font-mono" : ""} ${dark ? "text-white" : "text-slate-800"}`}>{value}</p>
-    </div>
   );
 }
 
@@ -53,39 +38,29 @@ function IconEye({ open = false }) {
 export default function TeacherLoginDetailsModal({ teacher, dark = false }) {
   const [showPassword, setShowPassword] = useState(false);
   const loginPassword = teacher?.profile?.loginPassword || "";
+  const initials =
+    (teacher?.fullName || "T")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0] || "")
+      .join("")
+      .toUpperCase() || "T";
 
   return (
-    <div className="space-y-5">
-      <div
-        className={`overflow-hidden rounded-[28px] border ${
-          dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
-        }`}
-      >
-        <div
-          className={`flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between ${
-            dark
-              ? "bg-[linear-gradient(135deg,rgba(124,77,255,0.22),rgba(22,23,34,0.92))]"
-              : "bg-[linear-gradient(135deg,rgba(99,102,241,0.12),rgba(255,255,255,0.96))]"
-          }`}
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#7c4dff] text-xl font-bold text-white shadow-lg shadow-[#7c4dff]/20">
-              {(teacher?.fullName || "T")
-                .trim()
-                .split(/\s+/)
-                .slice(0, 2)
-                .map((part) => part[0] || "")
-                .join("")
-                .toUpperCase() || "T"}
+    <div className="space-y-4">
+      <div className={`rounded-2xl border p-4 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white">
+              {initials}
             </div>
             <div>
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${dark ? "text-[#cfc8ff]" : "text-indigo-600"}`}>
-                Teacher Login Profile
+              <p className={`text-xs font-medium uppercase tracking-[0.18em] ${dark ? "text-slate-400" : "text-slate-500"}`}>
+                Teacher Login Details
               </p>
-              <h4 className={`mt-1 text-[22px] font-semibold leading-tight ${dark ? "text-white" : "text-slate-900"}`}>
-                {teacher?.fullName || "—"}
-              </h4>
-              <p className={`mt-1 text-sm ${dark ? "text-[#9e9e9e]" : "text-slate-600"}`}>{teacher?.email || "—"}</p>
+              <h4 className={`mt-1 text-lg font-semibold ${dark ? "text-white" : "text-slate-900"}`}>{teacher?.fullName || "—"}</h4>
+              <p className={`text-sm ${dark ? "text-slate-400" : "text-slate-600"}`}>{teacher?.email || "—"}</p>
             </div>
           </div>
           <StatusPill active={teacher?.isActive} dark={dark} />
@@ -93,60 +68,43 @@ export default function TeacherLoginDetailsModal({ teacher, dark = false }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <DetailCard label="Teacher Name" value={teacher?.fullName || "—"} dark={dark} />
-        <DetailCard label="Email ID" value={teacher?.email || "—"} dark={dark} mono />
-        <div
-          className={`sm:col-span-2 rounded-[28px] border px-4 py-4 ${
-            dark ? "border-white/[0.06] bg-[#1a1b26]/70" : "border-slate-200 bg-slate-50/70"
-          }`}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-                Password
-              </p>
-              <p className={`mt-1 text-xs ${dark ? "text-[#7f8197]" : "text-slate-500"}`}>
-                Keep these credentials private and share them securely.
-              </p>
-            </div>
-            {loginPassword ? (
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                  dark
-                    ? "border-[#7c4dff]/25 bg-[#7c4dff]/10 text-[#cfc8ff] hover:bg-[#7c4dff]/15"
-                    : "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                }`}
-              >
-                <IconEye open={showPassword} />
-                {showPassword ? "Hide Password" : "Show Password"}
-              </button>
-            ) : null}
-          </div>
+        <div className={`rounded-2xl border px-4 py-3 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"}`}>
+          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${dark ? "text-slate-400" : "text-slate-500"}`}>Teacher Name</p>
+          <p className={`mt-2 text-sm font-medium ${dark ? "text-white" : "text-slate-800"}`}>{teacher?.fullName || "—"}</p>
+        </div>
+        <div className={`rounded-2xl border px-4 py-3 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"}`}>
+          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${dark ? "text-slate-400" : "text-slate-500"}`}>Email ID</p>
+          <p className={`mt-2 text-sm font-mono ${dark ? "text-white" : "text-slate-800"}`}>{teacher?.email || "—"}</p>
+        </div>
+      </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <div
-              className={`min-w-0 flex-1 rounded-2xl border px-4 py-3 ${
-                dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"
+      <div className={`rounded-2xl border p-4 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"}`}>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${dark ? "text-slate-400" : "text-slate-500"}`}>Login Password</p>
+            <p className={`mt-1 text-xs ${dark ? "text-slate-500" : "text-slate-500"}`}>Private credential</p>
+          </div>
+          {loginPassword ? (
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                dark
+                  ? "border-white/[0.08] bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"
+                  : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
               }`}
             >
-              <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-                Login Password
-              </p>
-              <p className={`mt-2 break-all font-mono text-sm ${dark ? "text-white" : "text-slate-800"}`}>
-                {loginPassword ? (showPassword ? loginPassword : "••••••••••") : "Not recorded"}
-              </p>
-            </div>
-            <div className={`rounded-2xl border px-4 py-3 ${dark ? "border-white/[0.06] bg-[#161722]" : "border-slate-200 bg-white"}`}>
-              <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${dark ? "text-[#9e9e9e]" : "text-slate-500"}`}>
-                Account
-              </p>
-              <div className="mt-2">
-                <StatusPill active={teacher?.isActive} dark={dark} />
-              </div>
-            </div>
-          </div>
+              <IconEye open={showPassword} />
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          ) : null}
+        </div>
+
+        <div className={`mt-3 rounded-xl border px-4 py-3 ${dark ? "border-white/[0.06] bg-[#1a1b26]" : "border-slate-200 bg-slate-50"}`}>
+          <p className={`text-xs font-semibold uppercase tracking-[0.14em] ${dark ? "text-slate-400" : "text-slate-500"}`}>Value</p>
+          <p className={`mt-2 break-all font-mono text-sm ${dark ? "text-white" : "text-slate-800"}`}>
+            {loginPassword ? (showPassword ? loginPassword : "••••••••••") : "Not recorded"}
+          </p>
         </div>
       </div>
     </div>
